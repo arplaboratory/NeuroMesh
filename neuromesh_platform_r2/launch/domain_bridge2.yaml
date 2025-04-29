@@ -1,0 +1,10 @@
+name: domain_bridge
+from_domain: 2
+to_domain: 1
+
+topics:
+  #wifi_features_agent1:
+  #        type: neuromesh_interfaces/msg/CompressedFeature
+
+  wifi_features_agent2:
+    type: neuromesh_interfaces/msg/CompressedFeature

@@ -1,0 +1,10 @@
+<launch>
+  <node pkg="tensorrt_engine" exec="tensorrt_engine" name="tensorrt_engine">
+    <param name="model_path" value="$(find-pkg-share tensorrt_engine)/models/mono+stereo_1024x320.simplified.onnx"/>
+
+    <param name="input_dimensions" value="1,3,320,1024"/>
+    <param name="output_dimensions" value="1,1,320,1024"/>
+
+    <param name="tensor_type" value="fp32"/>
+  </node>
+</launch>

@@ -1,0 +1,10 @@
+<launch>
+  <arg name="transport" default="2"/>
+  <arg name="self" default="1"/>
+
+  <node pkg="neuromesh_platform_r2" exec="decompression_node" name="decompression_on_$(var transport)">
+    <param name="output_name" value="features_agent$(var transport)_local$(var self)"/>
+    <param name="input_name" value="wifi_features_agent$(var transport)"/>
+    <param name="input_qos" value="default"/>
+ </node>
+</launch>

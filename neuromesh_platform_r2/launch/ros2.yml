@@ -1,0 +1,21 @@
+# ~/.tmuxinator/neuromesh.yml
+
+
+<% race_name=ENV["MAV_NAME"] %>
+<% control=ENV["CONTROL_TYPE"] %>
+name: <%=race_name%>
+root: ~/
+
+# <%= @args[0] %> = agent_num
+# <%= @args[1] %> = communicate with
+
+pre_window: export ROS_DOMAIN_ID=<%= @args[0] %>
+
+windows:
+  - main_console:
+      layout: tiled
+      panes:
+        - r2; sleep 1 && ros2 launch ~/ros2_ws/src/neuromesh_platform_r2/launch/full_except_bridge.py agent_num:=<%= @args[0] %>
+        - r2; sleep 2 && ros2 launch ~/ros2_ws/src/neuromesh_platform_r2/launch/compression.launch transport:=<%= @args[0] %> self:=<%= @args[0] %>
+        - r2; sleep 3 && ros2 launch ~/ros2_ws/src/neuromesh_platform_r2/launch/decompression.launch transport:=<%= @args[1] %> self:=<%= @args[0] %>
+        - sleep 30 && jtop

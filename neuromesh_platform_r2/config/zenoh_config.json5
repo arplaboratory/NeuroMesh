@@ -1,0 +1,25 @@
+{
+    plugins: {
+         ros2dds: {
+              namespace: "/",
+              domain: 80, // NOTE: This should match the ROS_DOMAIN_ID environment variable on this robot, and should be unique for each robot
+              allow: {
+                  publishers: [".*/features.*", ".*/gnn.*"],
+                  subscribers: [".*/features.*", ".*/gnn.*"],
+                  service_servers: [".*/mav_services/.*"],
+                  service_clients: [".*/mav_services/.*"],
+                  action_servers: [],
+                  action_clients: []
+             }
+         }
+    },
+
+    mode: "peer",
+    connect: { // NOTE: Insert IPs of all the robots on the network here, 
+        endpoints: [
+           "tcp/127.0.0.1:7447", // Example
+           "tcp/127.0.0.2:7447", // Example
+        ]
+    }
+}
+

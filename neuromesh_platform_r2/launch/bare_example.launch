@@ -1,0 +1,15 @@
+<launch>
+
+  <node pkg="neuromesh_platform_r2" exec="toy_implementation" name="agent1">
+    <param name="id" value="agent1"/>
+    <param name="output_topic" value="agent1_gnn_output"/>
+    <remap from="/camera" to="/camera/image_raw"/>
+  </node>
+
+  <!-- <node pkg="neuromesh_platform_r2" exec="toy_implementation" name="agent2">
+    <param name="id" value="agent2"/>
+    <param name="output_topic" value="agent2_gnn_output"/>
+    <remap from="/camera" to="/camera/image_raw"/>
+  </node> -->
+
+</launch>

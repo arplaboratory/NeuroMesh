@@ -1,0 +1,7 @@
+topics:
+  -
+        topic: /race1/cam1/color/image_raw
+        type: sensor_msgs/msg/Image
+  -
+        topic: /race1/cam1/color/camera_info
+        type: sensor_msgs/msg/CameraInfo

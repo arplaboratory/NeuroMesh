@@ -1,0 +1,29 @@
+# ~/.tmuxinator/neuromesh.yml
+
+
+<% race_name=ENV["MAV_NAME"] %>
+<% control=ENV["CONTROL_TYPE"] %>
+name: <%=race_name%>
+root: ~/
+
+# <%= @args[0] %> = agent_num
+# <%= @args[1] %> = communicate with
+
+pre_window: export ROS_DOMAIN_ID=<%= @args[0] %>
+
+windows:
+  - main_console:
+      layout: tiled
+      panes:
+        - r1; roscore
+        - r1; sleep 6 && roslaunch arpl_autonomy openvins_d435i_nodelet.launch
+
+        - r2; sleep 40 && ros2 launch ~/ros2_ws/src/neuromesh_platform_r2/launch/full_except_bridge.py agent_num:=<%= @args[0] %>
+        - r2; sleep 41 && ros2 launch ~/ros2_ws/src/neuromesh_platform_r2/launch/compression.launch transport:=<%= @args[0] %> self:=<%= @args[0] %>
+        - r2; sleep 41 && ros2 launch ~/ros2_ws/src/neuromesh_platform_r2/launch/decompression.launch transport:=<%= @args[1] %> self:=<%= @args[0] %>
+        - export ROS_HOSTNAME=localhost && export IGN_IP=127.0.0.1 && export ROS_MASTER_URI=http://localhost:11311 && sleep 45 && r1; r2 && ros2 run ros1_bridge dynamic_bridge --ros-args -r __ns:=/bridge<%= @args[0] %> #rosparam load ~/ros2_ws/src/neuromesh_platform_r2/launch/ros1_bridge.yaml && r2 && ros2 run ros1_bridge parameter_bridge --ros-args -r __ns:=/bridge<%= @args[0] %>
+        - r1; sleep 20 && roslaunch arpl_autonomy race_state_control_with_openvins.launch control_type:=<%=control%> mass:=1.108
+        - r1; sleep 30 && roslaunch arpl_autonomy mapping.launch
+        - r1; sleep 30 && rosrun arpl_autonomy race_monitor.py
+        - sleep 30 && jtop
+        - r2; sleep 45 && ros2 run domain_bridge domain_bridge ~/ros2_ws/src/neuromesh_platform_r2/launch/domain_bridge<%= @args[0] %>.yaml

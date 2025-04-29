@@ -1,0 +1,3 @@
+string id
+builtin_interfaces/Time timestamp
+CompressedTensor tensor
