@@ -166,7 +166,7 @@ void neuromeshNode::broadcast_transform() {
   t.header.stamp = this->now();
   t.header.frame_id =
       "cam1_color_optical_frame"; // Or whatever your parent frame is
-  t.child_frame_id = "anubis/map";
+  t.child_frame_id = id_ + "/map";
 
   // Set the translation
   t.transform.translation.x = 0.0; // Replace with actual values
@@ -313,7 +313,7 @@ void neuromeshNode::process_features() {
       auto combined_res1_pts3d_msg =
           std::make_unique<sensor_msgs::msg::PointCloud2>();
       combined_res1_pts3d_msg->header.stamp = this->now();
-      combined_res1_pts3d_msg->header.frame_id = "anubis/map";
+      combined_res1_pts3d_msg->header.frame_id = id_ + "/map";
       combined_res1_pts3d_msg->height = 1; // Unorganized point cloud
       combined_res1_pts3d_msg->width = total_points;
       combined_res1_pts3d_msg->is_bigendian = false;
@@ -377,7 +377,7 @@ void neuromeshNode::process_features() {
       auto combined_res2_pts3d_msg =
           std::make_unique<sensor_msgs::msg::PointCloud2>();
       combined_res2_pts3d_msg->header.stamp = this->now();
-      combined_res2_pts3d_msg->header.frame_id = "anubis/map";
+      combined_res2_pts3d_msg->header.frame_id = id_ + "/map";
       combined_res2_pts3d_msg->height = 1; // Unorganized point cloud
       combined_res2_pts3d_msg->width = total_points;
       combined_res2_pts3d_msg->is_bigendian = false;

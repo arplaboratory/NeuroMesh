@@ -1,4 +1,4 @@
-Tensor tensor1
+Tensor[] tensor1
 string model_name
 ---
-Tensor tensor2
+Tensor[] tensor2

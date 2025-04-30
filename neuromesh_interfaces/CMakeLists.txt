@@ -20,24 +20,26 @@ find_package(ament_cmake REQUIRED)
 find_package(builtin_interfaces REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(geometry_msgs REQUIRED)
 
 set(srv_files
     "srv/TensorRequest.srv"
 )
 
 set (msg_files
-      "msg/Tensor.msg"
-      "msg/TensorShape.msg"
-      "msg/Feature.msg"
-      "msg/CompressedTensor.msg"
-      "msg/CompressedFeature.msg"
-      )
-
+    "msg/Tensor.msg"
+    "msg/TensorShape.msg"
+    "msg/Feature.msg"
+    "msg/CompressedTensor.msg"
+    "msg/CompressedFeature.msg"
+    "msg/CommMessage.msg"
+    "msg/StateVector.msg"
+)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
 	${msg_files}
   ${srv_files}
-  DEPENDENCIES std_msgs builtin_interfaces
+  DEPENDENCIES std_msgs geometry_msgs builtin_interfaces
 )
 
 ament_export_dependencies(rosidl_default_runtime)
