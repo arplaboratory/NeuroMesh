@@ -20,11 +20,11 @@ Follow these instructions while having real world agents ready (ground robots an
 
 ### Third-Party Software
 
-- TensorRT (TODO: version)
+- TensorRT 8.6.1
+- NVIDIA CUDA 12.1
 - ROS2 Humble
-- Zenoh (TODO: version)
+- Zenoh 1.0.0-dev
 - zenoh-bridge-ros2dds v1.0.0-dev-34-gca4a1f2
-- NVIDIA Cuda (TODO: version)
 - tmux (optional: it is used for conveniently starting the required ROS2 nodes and other software, we will be using it in our demonstrations below)
 - Rviz2 (optional: for visualizations)
 
@@ -56,7 +56,7 @@ export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 - Add the `ROS_DOMAIN_ID` that you noted above in `plugins -> ros2dds -> domain` section as indicated in the file.
 - Put the IPs of all the robots on the network in `connect -> endpoints` section as indicated in the file. You can find the IPs using `ifconfig` command.
 
-4. Make sure the topic for the camera node is correct in `launch/dust3r_model_neuromesh_launch.py` in `neuromesh_platform_r2` ROS2 `ComposableNode` near the top of the file. (TODO: can this be made a command line argument)
+4. Make sure the topic for the camera node is correct in `launch/dust3r_model_neuromesh_launch.py` in `neuromesh_platform_r2` ROS2 `ComposableNode` near the top of the file.
 
 5. Get the encoder and decoder onnx model files on the robots.
 
@@ -70,12 +70,11 @@ export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 - Camera node
 - Zenoh node
   - Make sure that the config file location is correct
-- neuromesh pipeline
+- NeuroMesh pipeline
   - It can be run using `ros2 launch neuromesh_platform_r2 full_except_bridge.py feature_subscribe_topic:=/race15/features_agent2_local2`
   - `feature_subscribe_topic` parameter is used to subscribe to the features of neighboring robot.
   - Feature remapping can also be done in the launch file instead of passing in `feature_subscribe_topic`.
-  - (TODO: how will it change for each robot)
-- neuromesh DUSt3R exmaple launch file
+- NeuroMesh DUSt3R exmaple launch file
   - It can be run using `ros2 launch neuromesh_platform_r2 dust3r_model_neuromesh_launch.py name:=$ROBOT_NAME`
 
 9. Visualize point cloud output (optional)
