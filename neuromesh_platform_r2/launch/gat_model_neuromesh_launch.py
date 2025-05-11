@@ -70,7 +70,7 @@ def launch_setup(context):
             agent_list = agent_list.split(",")
 
     remappings = []
-    for i, agent in enumerate(agent_list):
+    for i, agent in enumerate(complete_agent_list):
         remappings.append((f"/{name}/features_{agent}", f"/{agent}/features_{agent}"))
         remappings.append(
             (f"/{name}/gnn_output_{agent}", f"/{agent}/gnn_output_{agent}")
@@ -141,7 +141,7 @@ def launch_setup(context):
                     "encoder_cycle_length": 3000,
                     "decoder_cycle_length": 3000,
                     "output_topic": "gnn_output_",
-                    "agents": ",".join(agent_list),
+                    "agents": ",".join(complete_agent_list),
                     "goal_poses_yaml_file": goal_file,
                     "planning_frame": planning_frame,
                     "goals_sending_delay": 2.0,
@@ -156,6 +156,15 @@ def launch_setup(context):
         print(f"Number of agents is less than {len(complete_agent_list)}. Adding odom_republisher nodes!")
         missing_agents = set(complete_agent_list) - set(agent_list)
         for missing_agent in missing_agents:
+            remappings = []
+            for i, agent in enumerate(complete_agent_list):
+                print(f"remapping {agent} to {missing_agent}")
+                remappings.append((f"/{missing_agent}/features_{agent}", f"/{agent}/features_{agent}"))
+                remappings.append(
+                    (f"/{missing_agent}/gnn_output_{agent}", f"/{agent}/gnn_output_{agent}")
+                )
+
+            remappings.append(("position_topic", f"/{name}/odometry/global"))
             composable_nodes.append(
                 ComposableNode(
                     package="neuromesh_platform_r2",
@@ -171,6 +180,65 @@ def launch_setup(context):
             print(
                 f"Added odom_republisher for {missing_agent} using {name}'s odometry"
             )
+            composable_nodes.append(
+                ComposableNode(
+                    package="tensorrt_engine",
+                    namespace=missing_agent,
+                    name=["engine", LaunchConfiguration("agent_num")],
+                    plugin="tensorrt_engine_node::TensorRTEngineNode",
+                    parameters=[
+                        {
+                            "model_names": "encoder,decoder1,decoder2",
+                            "encoder.model_path": get_package_share_directory("tensorrt_engine")
+                            + "/models/encoder_local.trt",
+                            "encoder.input_dimensions": "1,1,5",
+                            "encoder.output_dimensions": "1,1,16",
+                            "encoder.tensor_type": "fp32",
+                            "decoder1.model_path": get_package_share_directory(
+                                "tensorrt_engine"
+                            )
+                            + "/models/multi_head_gat_layer1.trt",
+                            "decoder1.input_dimensions": "1,1,16;1,4,16;1,1,16",
+                            "decoder1.output_dimensions": "1,1,16",
+                            "decoder1.tensor_type": "fp32",
+                            "decoder2.model_path": get_package_share_directory(
+                                "tensorrt_engine"
+                            )
+                            + "/models/multi_head_gat_layer2.trt",
+                            "decoder2.input_dimensions": "1,16;1,4,16;1,1,16",
+                            "decoder2.output_dimensions": "1,1,5",
+                            "decoder2.tensor_type": "fp32",
+                        }
+                    ],
+                    condition=IfCondition(odom_republisher),
+                )
+            )
+            composable_nodes.append(
+                ComposableNode(
+                    package="neuromesh_platform_r2",
+                    namespace=missing_agent,
+                    name=["neuromesh"],
+                    plugin="GATneuromeshNode::GATImplementation",
+                    parameters=[
+                        {
+                            "id": missing_agent,
+                            "encoder_model_name": "encoder",
+                            "decoder_model1_name": "decoder1",
+                            "decoder_model2_name": "decoder2",
+                            "encoder_cycle_length": 3000,
+                            "decoder_cycle_length": 3000,
+                            "output_topic": "gnn_output_",
+                            "agents": ",".join(complete_agent_list),
+                            "goal_poses_yaml_file": goal_file,
+                            "planning_frame": planning_frame,
+                            "goals_sending_delay": 2.0,
+                        }
+                    ],
+                    remappings=remappings,
+                    condition=IfCondition(odom_republisher),
+                )
+            )
+
 
     launch_list.append(
         ComposableNodeContainer(
