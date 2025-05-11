@@ -50,7 +50,7 @@ void TensorRTEngineNode::tensor_request_callback(
   auto now = this->get_clock()->now();
   double timestamp = now.seconds() + now.nanoseconds() / 1e9;
   RCLCPP_DEBUG(this->get_logger(), "Received service request.");
-  RCLCPP_INFO(this->get_logger(), "Time of receiving service call %.9f",
+  RCLCPP_DEBUG(this->get_logger(), "Time of receiving service call %.9f",
               timestamp);
   RCLCPP_DEBUG(this->get_logger(), "Number of input tensors: %zu",
                request->tensor1.size());

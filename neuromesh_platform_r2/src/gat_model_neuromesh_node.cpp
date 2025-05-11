@@ -63,7 +63,6 @@ GATneuromeshNode :: GATneuromeshNode(const rclcpp::NodeOptions &options): Node("
 	//PLACEHOLDER: update available_agents
 	
 	all_agents = splitAgentString(agents_);
-	//RCLCPP_INFO(this->get_logger(), "Agents:");
 	for (const auto& agent : all_agents) {
 		RCLCPP_DEBUG(this->get_logger(), "%s", agent.c_str());
 	}
@@ -173,7 +172,6 @@ void GATneuromeshNode::load_goal_poses_from_yaml() {
 void GATneuromeshNode::pos_callback(const nav_msgs::msg::Odometry::SharedPtr msg) {
 
     // Parse position data
-    //RCLCPP_INFO(this->get_logger(), "Inside pos_callback function");
     pos_callback_complete = true;
 
     nav_msgs::msg::Odometry rel_odom = *msg;
@@ -216,19 +214,8 @@ neuromesh_interfaces::msg::Tensor GATneuromeshNode::calculate_goal_distances(con
         float dx = state_vector[0] - goal_poses_[j].position.x;
         float dy = state_vector[1] - goal_poses_[j].position.y;
 
-        // Only for testing with hard coded starting positions for debugging, later use the above positions from odom topic
-        // float dx = 0.0 - goal_poses_[j].position.x;
-        // float dy = 0.0 - goal_poses_[j].position.y;
-        
         // Store the actual Euclidean distance
         distance_values.push_back(dx * dx + dy * dy);
-    }
-    std::cout<<"x: "<<state_vector[0]<<std::endl;
-    std::cout<<"y: "<<state_vector[1]<<std::endl;
-
-    std::cout<<'Distance_values = ';
-    for(auto value : distance_values) {
-        std::cout<<"Distance: "<<value<<std::endl;
     }
 
     // Directly copy float values to tensor data
@@ -498,9 +485,6 @@ void GATneuromeshNode::run_decoder_cycle() {
             }
             ss << "]";
 
-            // RCLCPP_INFO_STREAM(this->get_logger(), "First Decoder features output: " << "\n Size: " << size
-            //                                                 << "\n Output: " << ss.str());
-
             const auto& data = gnn_result_tensor->data;
 
             // Publish the GNN result to other robots
@@ -544,7 +528,7 @@ void GATneuromeshNode::run_decoder_cycle() {
             // }
 
         } else {
-            RCLCPP_INFO(this->get_logger(), "Failed to build decoder tensor");
+            RCLCPP_ERROR(this->get_logger(), "Failed to build decoder tensor");
         }
 
         // Clear received features for the next cycle
@@ -596,23 +580,23 @@ void GATneuromeshNode::prepare_second_stage_decoding() {
                     size_t size = second_decoder_result_tensor->data.size();
                     std::memcpy(&max_prob, &second_decoder_result_tensor->data[0], sizeof(float));
                     
-                    std::stringstream ss;
-                    ss << "[" << std::fixed << std::setprecision(2) << max_prob;
-                    for (size_t i = 4; i < size; i +=4) {
-                        if (i + 3 < size)
-                        {
-                            std::memcpy(&next, &second_decoder_result_tensor->data[i], sizeof(float));
-                            ss << " " << next << " ";
-                            if (((i/4) % 5) == 0 ){
-                                ss << "\n";
-                            }
-                            if (next > max_prob) {
-                                max_prob = next;
-                                max_prob_index = i/4;
-                            }
-                        }
-                    }
-                    ss << "]";
+                    // std::stringstream ss;
+                    // ss << "[" << std::fixed << std::setprecision(2) << max_prob;
+                    // for (size_t i = 4; i < size; i +=4) {
+                    //     if (i + 3 < size)
+                    //     {
+                    //         std::memcpy(&next, &second_decoder_result_tensor->data[i], sizeof(float));
+                    //         ss << " " << next << " ";
+                    //         if (((i/4) % 5) == 0 ){
+                    //             ss << "\n";
+                    //         }
+                    //         if (next > max_prob) {
+                    //             max_prob = next;
+                    //             max_prob_index = i/4;
+                    //         }
+                    //     }
+                    // }
+                    // ss << "]";
                     // RCLCPP_INFO_STREAM(this->get_logger(), "Second Decoder final output: " << second_decoder_result_tensor->data_type 
                     //                                         << "\n Size: " << size
                     //                                         << "\n Output: " << ss.str());
@@ -652,8 +636,6 @@ void GATneuromeshNode::prepare_second_stage_decoding() {
                     std::stringstream pose_string;
                     pose_string << yaml_string;
 
-                    std::cout << pose_string.str() << std::endl;
-
                     // Publish the PoseStamped message
                     // second_decoder_result_publisher_->publish(pose_msg);
 
@@ -688,25 +670,6 @@ void GATneuromeshNode::prepare_second_stage_decoding() {
                         RCLCPP_ERROR(this->get_logger(), "Failed to send waypoint command.");
                     }
                     
-                    // TODO: Not working... fix this.
-                    // Timer delay to send goals until robots reach starting poses.
-                    // auto timer = this->create_wall_timer(
-                    //     std::chrono::duration<double>(goals_sending_delay_),
-                    //     [this, waypoint_yaml, waypoint_command]() {
-
-                    //     if (!waypoint_yaml_request->wait_for_service(std::chrono::seconds(1)) && !waypoint_cmd_sent_) {
-                    //         RCLCPP_ERROR(this->get_logger(), "Waypoint client not reachable via service.");
-                    //     }
-                    //     auto waypoint_yaml_result = waypoint_yaml_request->async_send_request(waypoint_yaml);
-
-                    //     if (!waypoint_command_request->wait_for_service(std::chrono::seconds(1)) && !waypoint_cmd_sent_) {
-                    //         RCLCPP_ERROR(this->get_logger(), "Waypoint client not reachable via service.");
-                    //     }
-                    //     auto waypoint_command_result = waypoint_command_request->async_send_request(waypoint_command);
-
-                    //     waypoint_cmd_sent_ = true;
-                        
-                    //     });
                 }
             }
         }
@@ -729,7 +692,7 @@ void GATneuromeshNode::prepare_second_stage_decoding() {
             }
 
         } else {
-            RCLCPP_INFO(this->get_logger(), "Failed to build decoder tensor");
+            RCLCPP_ERROR(this->get_logger(), "Failed to build decoder tensor");
         }
 
         // Clear received GNN results for next cycle
