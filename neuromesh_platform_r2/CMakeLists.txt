@@ -30,7 +30,6 @@ find_package(tf2_sensor_msgs REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
-find_package(arl_mission_maestro REQUIRED)
 find_package(phx_nav_msgs REQUIRED)
 find_package(visualization_msgs REQUIRED)
 find_package(interactive_markers REQUIRED)
@@ -70,7 +69,6 @@ set (dependencies
  "nav_msgs"
  "Eigen3"
  "tf2_geometry_msgs"
- "arl_mission_maestro"
  "phx_nav_msgs"
  "visualization_msgs"
  "interactive_markers"
@@ -112,23 +110,6 @@ target_link_libraries(control_implementation ${YAML_CPP_LIBRARIES})
 
 rclcpp_components_register_nodes(control_implementation "ControlneuromeshNode::ControlImplementation")
 
-# Modified neuromesh gat model codes
-add_library(gat_example SHARED
-  src/gat_model_implementation.cpp
-  src/gat_model_neuromesh_node.cpp)
-
-set_target_properties(gat_example PROPERTIES
-  COMPILE_DEFINITIONS "COMPOSITION_BUILDING_DLL"
-  )
-
-ament_target_dependencies(gat_example
-    ${dependencies}
-)
-
-target_link_libraries(gat_example ${YAML_CPP_LIBRARIES})
-
-rclcpp_components_register_nodes(gat_example "GATneuromeshNode::GATImplementation")
-
 # odom_republisher
 add_library(odom_republisher SHARED
   src/odom_republisher.cpp)
@@ -145,27 +126,6 @@ ament_target_dependencies(odom_republisher
 )
 
 rclcpp_components_register_nodes(odom_republisher "odom_republisher::OdomRepublisher")
-
-
-# starting_poses_sender_node
-add_library(starting_poses_sender_node SHARED
-  src/starting_poses_sender.cpp)
-
-set_target_properties(starting_poses_sender_node PROPERTIES
-  COMPILE_DEFINITIONS "COMPOSITION_BUILDING_DLL"
-  )
-
-# Link dependencies
-ament_target_dependencies(starting_poses_sender_node
-  "rclcpp"
-  "geometry_msgs"
-  "rclcpp_components"
-  "yaml-cpp"
-  "arl_mission_maestro"
-  "phx_nav_msgs"
-)
-
-rclcpp_components_register_nodes(starting_poses_sender_node "goal_sender::GoalSenderNode")
 
 # Add include folder
 target_include_directories(visualization_node PUBLIC "include/")
@@ -212,9 +172,7 @@ if(BUILD_TESTING)
 endif()
 
 install(TARGETS
-  gat_example
   odom_republisher
-  starting_poses_sender_node
   dust3r_example
   #control_implementation
   ARCHIVE DESTINATION lib
@@ -231,7 +189,6 @@ install(TARGETS
 
 install(FILES
   launch/full_except_bridge.py
-  launch/gat_model_neuromesh_launch.py
   launch/dust3r_model_neuromesh_launch.py
   DESTINATION share/${PROJECT_NAME}/launch
 )
