@@ -30,7 +30,6 @@ find_package(tf2_sensor_msgs REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
-find_package(phx_nav_msgs REQUIRED)
 find_package(visualization_msgs REQUIRED)
 find_package(interactive_markers REQUIRED)
 find_package(rviz_rendering REQUIRED)
@@ -69,7 +68,6 @@ set (dependencies
  "nav_msgs"
  "Eigen3"
  "tf2_geometry_msgs"
- "phx_nav_msgs"
  "visualization_msgs"
  "interactive_markers"
  "rviz_rendering"
