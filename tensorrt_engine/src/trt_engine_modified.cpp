@@ -42,7 +42,7 @@ nvinfer1::ICudaEngine *createEngine(const std::string &inputFileName, nvinfer1::
         std::unique_ptr<nvinfer1::IRuntime> runtime(nvinfer1::createInferRuntime(logger));
         assert(runtime != nullptr);
 
-        return runtime->deserializeCudaEngine(buffer.data(), buffer.size(), nullptr);
+        return runtime->deserializeCudaEngine(buffer.data(), buffer.size());
 
     }else{ //".onnx" file
         load_file = inputFileName;
@@ -58,16 +58,19 @@ nvinfer1::ICudaEngine *createEngine(const std::string &inputFileName, nvinfer1::
 
         std::unique_ptr<nvinfer1::IBuilderConfig> config(builder->createBuilderConfig());
 
-        nvinfer1::ICudaEngine* engine = builder->buildEngineWithConfig(*network, *config);
+        std::unique_ptr<nvinfer1::IHostMemory> serializedEngine(
+            builder->buildSerializedNetwork(*network, *config)
+        );
 
         //save to .trt
-        std::unique_ptr<nvinfer1::IHostMemory> serializedEngine(engine->serialize());
-
         std::ofstream out(engine_path, std::ios::binary);
         out.write((char *)serializedEngine->data(), serializedEngine->size());
 
+        // deserialize from serialized engine
+        std::unique_ptr<nvinfer1::IRuntime> runtime(nvinfer1::createInferRuntime(logger));
+        assert(runtime != nullptr);
 
-        return engine;
+        return runtime->deserializeCudaEngine(serializedEngine->data(), serializedEngine->size());
     }
 }
 
@@ -84,13 +87,16 @@ TRTEngine::TRTEngine(std::string model_filename, std::vector<std::vector<uint>> 
     logger.log(nvinfer1::ILogger::Severity::kINFO, "Engine created.");
 
     context.reset(engine->createExecutionContext());
-    bindings.resize(engine->getNbBindings());
+
+    const int num_io = engine->getNbIOTensors();
+    bindings.resize(num_io);
 
      // Alloc cuda memory for IO tensors
-    for (int i = 0; i < engine->getNbBindings(); ++i) {
-        nvinfer1::Dims dims{engine->getBindingDimensions(i)};
-        size_t size = std::accumulate(dims.d, dims.d + dims.nbDims, batchSize, std::multiplies<size_t>());
-        // Create CUDA buffer for Tensor.
+    for (int i = 0; i < num_io; ++i) {
+        const char* tensor_name = engine->getIOTensorName(i);
+        nvinfer1::Dims dims = engine->getTensorShape(tensor_name);
+        size_t size = std::accumulate(dims.d, dims.d + dims.nbDims, 1, std::multiplies<size_t>());
+        // Create CUDA buffer for Tensor
         cudaMalloc(&bindings[i], size * type_length);
     }
 }
