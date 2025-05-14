@@ -146,7 +146,7 @@ void TRTEngine::runInference(const std::vector<const void *> &inputTensors,
   }
 
   // Run inference
-  context->enqueueV2(bindings.data(), stream, nullptr);
+  context->enqueueV3(stream);
 
   // Copy output data to host
   for (size_t i = 0; i < outputTensors.size(); ++i) {
