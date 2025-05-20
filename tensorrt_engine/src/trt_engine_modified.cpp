@@ -9,7 +9,8 @@
 #include "NvInferPlugin.h"
 
 nvinfer1::ICudaEngine *createEngine(const std::string &inputFileName,
-                                    nvinfer1::ILogger &logger) {
+                                    nvinfer1::ILogger &logger,
+                                    std::unique_ptr<nvinfer1::IRuntime> &runtime) {
   std::string load_file;
   std::string engine_path = inputFileName;
   // 5 is length of ".onnx" and before ".trt"
@@ -39,10 +40,6 @@ nvinfer1::ICudaEngine *createEngine(const std::string &inputFileName,
       if (0 == ss || !in.read(buffer.data(), ss))
         throw std::runtime_error("Cannot read" + engine_path + ".engine");
     }
-
-    std::unique_ptr<nvinfer1::IRuntime> runtime(
-        nvinfer1::createInferRuntime(logger));
-    assert(runtime != nullptr);
 
     return runtime->deserializeCudaEngine(buffer.data(), buffer.size());
 
@@ -92,7 +89,11 @@ TRTEngine::TRTEngine(std::string model_filename,
   Logger logger;
   logger.log(nvinfer1::ILogger::Severity::kINFO, "Creating engine ...");
 
-  engine.reset(createEngine(model_filename, logger));
+  runtime.reset(nvinfer1::createInferRuntime(logger));
+  if (!runtime)
+    throw std::runtime_error("Runtime creation failed!");
+
+  engine.reset(createEngine(model_filename, logger, runtime));
 
   if (!engine)
     throw std::runtime_error("Engine creation failed !");
