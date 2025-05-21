@@ -2,7 +2,7 @@ import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import LogInfo, DeclareLaunchArgument, TimerAction, OpaqueFunction
-from launch.substitutions import EnvironmentVariable, LaunchConfiguration
+from launch.substitutions import EnvironmentVariable, LaunchConfiguration, TextSubstitution
 from launch_ros.actions import ComposableNodeContainer
 from launch_ros.descriptions import ComposableNode
 
@@ -10,6 +10,7 @@ def launch_setup(context):
     name = LaunchConfiguration('name').perform(context)
     agent_list = LaunchConfiguration('agent_list').perform(context)
     agent_num = LaunchConfiguration('agent_num').perform(context)
+    color_raw_topic = LaunchConfiguration('color_raw_topic').perform(context)
 
     pos1_yaml_path = os.path.join(get_package_share_directory('neuromesh_platform_r2'), 'config', 'pos1.yaml')
     pos2_yaml_path = os.path.join(get_package_share_directory('neuromesh_platform_r2'), 'config', 'pos2.yaml')
@@ -37,8 +38,7 @@ def launch_setup(context):
                         'dust3r_decoder_output_dimensions' : "2,384,512,3;2,384,512;2,384,512,3;2,384,512",
                         }],
 
-            remappings=[('camera', f'/{name}/sensors/camera_0/camera/color/image_raw'),
-                        ] + remappings,
+            remappings=[('camera', color_raw_topic),] + remappings,
         ),
 
     ComposableNode(
@@ -76,6 +76,16 @@ def generate_launch_description():
     )
     )
 
+    color_raw_topic_arg = DeclareLaunchArgument(
+        name='color_raw_topic',
+        default_value=[
+            TextSubstitution(text='/'),
+            LaunchConfiguration('name'),
+            TextSubstitution(text='/sensors/camera_0/camera/color/image_raw')
+        ],
+        description='Camera topic to be remapped',
+    )
+
     agent_num_arg = DeclareLaunchArgument(
         name='agent_num', default_value='1',
         description=(
@@ -96,5 +106,6 @@ def generate_launch_description():
         name_arg,
         agent_num_arg,
         agent_list_arg,
-        opaque_function_action
+        color_raw_topic_arg,
+        opaque_function_action,
     ])
