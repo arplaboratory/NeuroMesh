@@ -86,7 +86,6 @@ TRTEngine::TRTEngine(std::string model_filename,
                      std::vector<std::vector<uint>> input_dims, int type_length,
                      int batchSize) {
 
-  Logger logger;
   logger.log(nvinfer1::ILogger::Severity::kINFO, "Creating engine ...");
 
   runtime.reset(nvinfer1::createInferRuntime(logger));
@@ -117,7 +116,6 @@ TRTEngine::TRTEngine(std::string model_filename,
 }
 
 TRTEngine::~TRTEngine() {
-
   for (int i = 0; i < bindings.size(); i++) {
     cudaFree(bindings[i]);
   }
@@ -144,6 +142,16 @@ void TRTEngine::runInference(const std::vector<const void *> &inputTensors,
   for (size_t i = 0; i < inputTensors.size(); ++i) {
     cudaMemcpyAsync(bindings[i], inputTensors[i], inputSizes[i],
                     cudaMemcpyHostToDevice, stream);
+  }
+
+  for (size_t i = 0; i < inputTensors.size(); ++i) {
+    const char *tensor_name = engine->getIOTensorName(i);
+    context->setInputTensorAddress(tensor_name, bindings[i]);
+  }
+
+  for (size_t i = 0; i < outputTensors.size(); ++i) {
+    const char *tensor_name = engine->getIOTensorName(inputTensors.size() + i);
+    context->setOutputTensorAddress(tensor_name, bindings[inputTensors.size() + i]);
   }
 
   // Run inference
