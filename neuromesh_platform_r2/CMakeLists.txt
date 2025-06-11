@@ -91,6 +91,22 @@ ament_target_dependencies(dust3r_example
 target_link_libraries(dust3r_example ${YAML_CPP_LIBRARIES})
 rclcpp_components_register_nodes(dust3r_example "neuromeshNode::ToyImplementation")
 
+# VGGT Codes
+add_library(vggt_example SHARED
+ src/vggt_toy_implementation.cpp
+ src/vggt_neuromesh_node.cpp)
+
+set_target_properties(vggt_example PROPERTIES
+ COMPILE_DEFINITIONS "COMPOSITION_BUILDING_DLL"
+)
+
+ ament_target_dependencies(vggt_example
+ ${dependencies}
+ )
+
+target_link_libraries(vggt_example ${YAML_CPP_LIBRARIES})
+rclcpp_components_register_nodes(vggt_example "vggtNode::VggtToyImplementation")
+
 #Control Codes
 add_library(control_implementation SHARED
   src/control_implementation.cpp
@@ -172,6 +188,7 @@ endif()
 install(TARGETS
   odom_republisher
   dust3r_example
+  vggt_example
   #control_implementation
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
@@ -188,13 +205,16 @@ install(TARGETS
 install(FILES
   launch/full_except_bridge.py
   launch/dust3r_model_neuromesh_launch.py
+  launch/vggt_model_neuromesh_launch.py
   DESTINATION share/${PROJECT_NAME}/launch
 )
 
 install(DIRECTORY config
   DESTINATION share/${PROJECT_NAME})
 
-install(PROGRAMS scripts/dust3r_model_neuromesh_launch.sh
+install(PROGRAMS 
+    scripts/dust3r_model_neuromesh_launch.sh
+    scripts/vggt_model_neuromesh_launch.sh
     DESTINATION share/${PROJECT_NAME})
 
 ament_export_dependencies(rosidl_default_runtime)
