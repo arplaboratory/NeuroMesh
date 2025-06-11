@@ -125,6 +125,15 @@ void TRTEngine::runInference(const std::vector<const void *> &inputTensors,
                              const std::vector<int> &inputSizes,
                              std::vector<void *> &outputTensors,
                              const std::vector<int> &outputSizes) {
+
+  /*
+  std::cout << "IN ENGINE: my inputTensors.size() looks like " << inputTensors.size() << std::endl; std::cout << "IN ENGINE: my inputSizes.size() looks like " << inputSizes.size() << std::endl;
+  std::cout << "IN ENGINE: my inputSizes[0] looks like " << inputSizes.at(0) << std::endl;
+
+  std::cout << "IN ENGINE: my outputTensors.size() looks like " << outputTensors.size() << std::endl; std::cout << "IN ENGINE: my outputSizes.size() looks like " << outputSizes.size() << std::endl;
+  std::cout << "IN ENGINE: my outputSizes[0] looks like " << outputSizes.at(0) << std::endl;
+  */
+
   if (inputTensors.size() + outputTensors.size() != bindings.size()) {
     throw std::runtime_error(
         "Number of input and output tensors doesn't match engine bindings");
@@ -133,11 +142,6 @@ void TRTEngine::runInference(const std::vector<const void *> &inputTensors,
   cudaStream_t stream;
   cudaStreamCreate(&stream);
 
-  //    std::cout << "IN ENGINE: my inputTensors.size() looks like " <<
-  //    inputTensors.size() << std::endl; std::cout << "IN ENGINE: my
-  //    inputSizes.size() looks like " << inputSizes.size() << std::endl;
-  //    std::cout << "IN ENGINE: my inputSizes[0] looks like " <<
-  //    inputSizes.at(0) << std::endl;
   // Copy input data to device
   for (size_t i = 0; i < inputTensors.size(); ++i) {
     cudaMemcpyAsync(bindings[i], inputTensors[i], inputSizes[i],

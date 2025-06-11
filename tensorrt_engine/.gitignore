@@ -1,5 +1,5 @@
 third_party/*
-models/*.trt
+models/*
 build/*
 .vscode/*
 resources/*

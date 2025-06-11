@@ -216,18 +216,14 @@ void neuromeshNode::camera_callback(
 
   fresh_encoder_cycle = false;
 
-  RCLCPP_DEBUG(this->get_logger(), "Running encoder on image.");
+  RCLCPP_INFO(this->get_logger(), "NEURO NODE: Running encoder on image.");
 
   neuromesh_interfaces::msg::Tensor image_tensor = imageToTensor(msg);
-  // RCLCPP_INFO(this->get_logger(), "image tensor size %ld",
-  // image_tensor.data.size());
 
   std::vector<neuromesh_interfaces::msg::Tensor> image_tensors = {image_tensor};
 
   startClock("encoder_inference");
-  RCLCPP_DEBUG(this->get_logger(), "Performing Inference on Encoder");
   encoder_result = performInference(encoder_model_name_, image_tensors);
-  RCLCPP_DEBUG(this->get_logger(), "Finished performing Inference on Encoder");
   fresh_encoder_cycle = false;
 }
 
@@ -243,16 +239,16 @@ void neuromeshNode::process_features() {
     for (size_t i = 0; i < gnn_results.size(); ++i) {
       auto &tensor = gnn_results[i];
 
-      std::cout << "Tensor " << i << " details:" << std::endl;
+      std::cout << "NEURO NODE: Tensor " << i << " details:" << std::endl;
 
       // Dimensions with more readable output
-      std::cout << "Dimensions (" << tensor->shape.dims.size() << "): ";
+      std::cout << "NEURO NODE: Dimensions (" << tensor->shape.dims.size() << "): ";
       for (auto dim : tensor->shape.dims) {
         std::cout << dim << " ";
       }
       std::cout << std::endl;
 
-      std::cout << "Total data size: " << tensor->data.size() << std::endl;
+      std::cout << "NEURO NODE: Total data size: " << tensor->data.size() << std::endl;
 
       // Improved data point printing with type casting and error checking
       if (!tensor->data.empty()) {
@@ -260,21 +256,18 @@ void neuromeshNode::process_features() {
             reinterpret_cast<const float *>(tensor->data.data());
         size_t float_count = tensor->data.size() / sizeof(float);
 
-        std::cout << "Float32 interpretation (first 10 or fewer):" << std::endl;
+        std::cout << "NEURO NODE: Float32 interpretation (first 10 or fewer):" << std::endl;
         for (size_t j = 0; j < std::min(float_count, size_t(10)); ++j) {
           std::cout << float_data[j] << " ";
         }
         std::cout << std::endl;
       } else {
-        std::cout << "No data points in this tensor." << std::endl;
+        std::cout << "NEURO NODE: No data points in this tensor." << std::endl;
       }
-
-      std::cout << "------------------------" << std::endl;
     }
 
     if (gnn_results.size() != 4) {
-      RCLCPP_WARN(this->get_logger(),
-                  "Unexpected number of tensors in the inference result.");
+      RCLCPP_WARN(this->get_logger(), "NEURO NODE: Unexpected number of tensors in the inference result.");
       feature_buffer_.clear();
       return;
     }
@@ -298,8 +291,8 @@ void neuromeshNode::process_features() {
     // reshape the res1_pts3d to 3xHxW format
     auto res1_pts3d_shape = res1_pts3d->shape.dims;
     auto res2_pts3d_shape = res2_pts3d->shape.dims;
-    std::cout << decoder_output_dims.size() << std::endl;
-    std::cout << decoder_output_dims[0].size() << std::endl;
+    std::cout << "NEURO NODE: " << decoder_output_dims.size() << std::endl;
+    std::cout << "NEURO NODE: " << decoder_output_dims[0].size() << std::endl;
 
     if ((decoder_output_dims.size() == 4) &&
         (decoder_output_dims[0].size() == 4)) {
@@ -438,7 +431,7 @@ void neuromeshNode::process_features() {
       pts3d_res2_cloud_publisher_->publish(std::move(combined_res2_pts3d_msg));
     }
 
-    std::cout << "After publishing the point cloud" << std::endl;
+    std::cout << "NEURO NODE: After publishing the point cloud" << std::endl;
 
     // Publish each tensor individually
     // RCLCPP_INFO(this->get_logger(), "Publishing inference results.");
@@ -450,18 +443,17 @@ void neuromeshNode::process_features() {
     feature_buffer_.clear();
 
     stopClock("feature_handling");
-    RCLCPP_DEBUG(this->get_logger(), "Feature handling took %lims",
+    RCLCPP_INFO(this->get_logger(), "NEURO NODE: Feature handling took %lims",
                  (times["feature_handling"].first));
-    RCLCPP_DEBUG(this->get_logger(), "Decoder inference took %lims",
+    RCLCPP_INFO(this->get_logger(), "NEURO NODE: Decoder inference took %lims",
                  (times["decoder_inference"].first));
   }
 
   if (!feature_buffer_.empty()) {
     startClock("feature_handling");
-    RCLCPP_DEBUG(this->get_logger(), "Running decoder on features.");
+    RCLCPP_INFO(this->get_logger(), "NEURO NODE: Trying decoding");
 
     // Process feature buffer here
-    RCLCPP_DEBUG(this->get_logger(), "Building Decoder Tensor");
     neuromesh_interfaces::msg::Tensor own_tensor, neighbour_tensor, pos1, pos2;
     YAML::Node pos1_yaml = YAML::LoadFile(pos1_yaml_path);
     YAML::Node pos2_yaml = YAML::LoadFile(pos2_yaml_path);
@@ -469,15 +461,16 @@ void neuromeshNode::process_features() {
                            own_tensor, neighbour_tensor, pos1, pos2, pos1_yaml,
                            pos2_yaml)) {
       startClock("decoder_inference");
-      RCLCPP_DEBUG(this->get_logger(), "Performing Inference on Decoder");
+      RCLCPP_INFO(this->get_logger(), "NEURO NODE: Performing Inference on Decoder");
+      RCLCPP_INFO(this->get_logger(), "NEURO NODE: Neighbor tensor size: %ld", neighbour_tensor.data.size());
       std::vector<neuromesh_interfaces::msg::Tensor> decoder_tensors = {
           own_tensor, neighbour_tensor, pos1, pos2};
       gnn_result_future =
           performInference(decoder_model_name_, decoder_tensors);
-      RCLCPP_DEBUG(this->get_logger(),
-                   "Finished performing inference on Decoder");
+      RCLCPP_INFO(this->get_logger(),
+                   "NEURO NODE: Finished performing inference on Decoder");
     } else {
-      RCLCPP_DEBUG(this->get_logger(), "Could not build Decoder Tensor");
+      RCLCPP_INFO(this->get_logger(), "NEURO NODE: Could not build Decoder Tensor");
     }
   }
 }
@@ -708,31 +701,26 @@ void neuromeshNode::run_encoder_cycle() {
 
   stopClock("encoder_inference");
 
-  std::vector<std::shared_ptr<neuromesh_interfaces::msg::Tensor>>
-      output_tensors = encoder_result.get();
+  std::vector<std::shared_ptr<neuromesh_interfaces::msg::Tensor>> output_tensors = encoder_result.get();
 
   if (output_tensors.size() != 1) {
-    RCLCPP_WARN(this->get_logger(),
-                "Encoder model did not return 1 output tensor as expected.");
+    RCLCPP_WARN(this->get_logger(), "NEURO NODE: Encoder model did not return 1 output tensor as expected.");
     return;
   }
 
-  std::shared_ptr<neuromesh_interfaces::msg::Tensor> feature_tensor =
-      output_tensors[0];
+  std::shared_ptr<neuromesh_interfaces::msg::Tensor> feature_tensor = output_tensors[0];
 
-  // RCLCPP_INFO(this->get_logger(), "Encoder Feature Tensor size: %ld",
-  // feature_tensor->data.size());
-  RCLCPP_DEBUG(this->get_logger(), "Encoder took %lims",
-               times["encoder_inference"].first);
+  RCLCPP_INFO(this->get_logger(), "NEURO NODE: Encoder Output tensor size: %ld",
+  feature_tensor->data.size());
+  RCLCPP_DEBUG(this->get_logger(), "NEURO NODE: Encoder took %lims", times["encoder_inference"].first);
 
   if (feature_tensor->result != 0) {
-    RCLCPP_WARN(this->get_logger(), "Encoder inference failed.");
+    RCLCPP_WARN(this->get_logger(), "NEURO NODE: Encoder inference failed.");
     return;
   }
 
-  RCLCPP_INFO(this->get_logger(), "Publishing features.");
-  neuromesh_interfaces::msg::Feature feature_msg =
-      buildFeatureMessage(*feature_tensor.get());
+  RCLCPP_INFO(this->get_logger(), "NEURO NODE: Publishing encoder output for other agents.\n------");
+  neuromesh_interfaces::msg::Feature feature_msg = buildFeatureMessage(*feature_tensor.get());
   feature_publisher_->publish(feature_msg);
   feature_buffer_[this->id_] =
       std::make_shared<neuromesh_interfaces::msg::Feature>(feature_msg);
