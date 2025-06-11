@@ -212,22 +212,6 @@ neuromesh_interfaces::msg::Tensor TensorRTEngineNode::execute(
   return output_msg;
 }
 
-// void TensorRTEngineNode::tensor_callback(const
-// std::shared_ptr<neuromesh_interfaces::msg::Tensor> msg){
-
-// 	// if(!engine_ready){
-// 	// 	RCLCPP_ERROR(this->get_logger(), "Engine not ready.");
-// 	// 	tensor_publisher_->publish(neuromesh_interfaces::msg::Tensor());
-// 	// 	return;
-// 	// }
-// 	// RCLCPP_INFO(this->get_logger(), "Received tensor from topic.");
-
-// 	// auto output_msg = execute(msg);
-
-// 	// tensor_publisher_->publish(output_msg);
-// 	// RCLCPP_INFO(this->get_logger(), "Published tensor.");
-// }
-
 int TensorRTEngineNode::tensor_string_to_typelength(std::string input) {
 
   if (input == "fp32")

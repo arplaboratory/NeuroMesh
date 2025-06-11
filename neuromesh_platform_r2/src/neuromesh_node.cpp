@@ -6,10 +6,8 @@ namespace neuromeshNode {
 neuromeshNode ::neuromeshNode(const rclcpp::NodeOptions &options)
     : Node("neuromesh_node", options) {
   // Declare node parameters
-  this->declare_parameter<std::string>("encoder_model_name",
-                                       "default_encoder_model");
-  this->declare_parameter<std::string>("decoder_model_name",
-                                       "default_decoder_model");
+  this->declare_parameter<std::string>("encoder_model_name", "default_encoder_model");
+  this->declare_parameter<std::string>("decoder_model_name", "default_decoder_model");
   this->declare_parameter<std::string>("topic_prefix", "features_");
   this->declare_parameter<std::string>("output_topic", "gnn_output");
   this->declare_parameter<int>("decoder_cycle_length", 1000);
@@ -33,8 +31,7 @@ neuromeshNode ::neuromeshNode(const rclcpp::NodeOptions &options)
   this->get_parameter("encoder_await_length", encoder_await_length_);
   this->get_parameter("id", id_);
   this->get_parameter("image_qos_profile", image_qos_profile_);
-  this->get_parameter("features_qos_profile",
-                      features_qos_profile_); // for both input and output
+  this->get_parameter("features_qos_profile", features_qos_profile_); // for both input and output
   this->get_parameter("output_qos_profile", output_qos_profile_);
   this->get_parameter("agents", agents_);
   this->get_parameter("to_nchw", to_nchw_);

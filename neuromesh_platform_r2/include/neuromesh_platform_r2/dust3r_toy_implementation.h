@@ -19,8 +19,7 @@ protected:
       const std::vector<neuromesh_interfaces::msg::Tensor> &tensors);
 
   bool buildDecoderTensor(
-      std::map<std::string, neuromesh_interfaces::msg::Feature::SharedPtr>
-          buffer,
+      std::map<std::string, neuromesh_interfaces::msg::Feature::SharedPtr> buffer,
       std::map<std::string, double> buffer_timestamp,
       neuromesh_interfaces::msg::Tensor &own_tensor,
       neuromesh_interfaces::msg::Tensor &neighbour_tensor,
@@ -31,16 +30,13 @@ protected:
   // sensor_msgs::msg::Image::SharedPtr msg);
 
   // topic publisehrs and subscribers
-  rclcpp::Publisher<neuromesh_interfaces::msg::Tensor>::SharedPtr
-      tensor_publisher_;
-  rclcpp::Subscription<neuromesh_interfaces::msg::Tensor>::SharedPtr
-      tensor_subscriber_;
+  rclcpp::Publisher<neuromesh_interfaces::msg::Tensor>::SharedPtr tensor_publisher_;
+  rclcpp::Subscription<neuromesh_interfaces::msg::Tensor>::SharedPtr tensor_subscriber_;
 
   void tensor_callback(const neuromesh_interfaces::msg::Tensor::SharedPtr msg);
 
   // service
-  rclcpp::Client<neuromesh_interfaces::srv::TensorRequest>::SharedPtr
-      tensor_client_;
+  rclcpp::Client<neuromesh_interfaces::srv::TensorRequest>::SharedPtr tensor_client_;
   // void
   // service_callback(rclcpp::Client<neuromesh_interfaces::srv::TensorRequest>::SharedFuture
   // future);
