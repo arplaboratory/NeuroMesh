@@ -59,10 +59,13 @@ def launch_setup(context):
         name='vggt_container',
         namespace=name,
         package='rclcpp_components',
-        executable='component_container',
+        executable='component_container_mt',  # Use multi-threaded executor
         composable_node_descriptions=composable_nodes,
         output='screen',
         arguments=['--ros-args', '--log-level', log_level],
+        additional_env={'ROS_DOMAIN_ID': EnvironmentVariable('ROS_DOMAIN_ID', default_value='0')},
+        # Use multi-threaded executor with 4 threads
+        ros_arguments=['--ros-args', '--log-level', log_level, '-p', 'use_intra_process_comms:=true'],
     )]
 
 def generate_launch_description():
