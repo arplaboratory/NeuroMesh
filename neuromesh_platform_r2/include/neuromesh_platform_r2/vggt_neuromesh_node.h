@@ -29,6 +29,9 @@ protected:
 
   // Process received features. Run once per decoder_cycle_length_
   void process_features();
+  
+  // Process encoder results and publish features
+  void process_encoder_result();
 
   void broadcast_transform();
 
@@ -150,6 +153,7 @@ protected:
   // repeating function to keep track of cycles
   rclcpp::TimerBase::SharedPtr decoder_timer_;
   rclcpp::TimerBase::SharedPtr encoder_timer_;
+  rclcpp::TimerBase::SharedPtr encoder_result_timer_;
 
   bool fresh_encoder_cycle;
   std::future<std::vector<std::shared_ptr<neuromesh_interfaces::msg::Tensor>>>
