@@ -188,3 +188,6 @@ void VggtToyImplementation::tensor_callback(const neuromesh_interfaces::msg::Ten
 }
 
 } // namespace vggtNode
+
+#include "rclcpp_components/register_node_macro.hpp"
+RCLCPP_COMPONENTS_REGISTER_NODE(vggtNode::VggtToyImplementation)
