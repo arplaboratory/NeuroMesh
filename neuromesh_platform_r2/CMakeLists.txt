@@ -36,10 +36,12 @@ find_package(rviz_rendering REQUIRED)
 find_package(rviz_common REQUIRED)
 find_package(std_srvs REQUIRED)
 find_package(rclcpp_components REQUIRED)
+find_package(PCL REQUIRED)
+find_package(pcl_conversions REQUIRED)
 
 include_directories(include)
 include_directories(
-    include ${EIGEN3_INCLUDE_DIR})
+    include ${EIGEN3_INCLUDE_DIR} ${PCL_INCLUDE_DIRS})
 
 add_executable(visualization_node
   src/visualization_node.cpp
@@ -73,6 +75,8 @@ set (dependencies
  "rviz_rendering"
  "rviz_common"
  "std_srvs"
+ "pcl_conversions"
+ "tf2"
  )
 
 # Modified Codes
@@ -106,6 +110,23 @@ set_target_properties(vggt_example PROPERTIES
 
 target_link_libraries(vggt_example ${YAML_CPP_LIBRARIES})
 rclcpp_components_register_nodes(vggt_example "vggtNode::VggtToyImplementation")
+
+# VGGT Separated Nodes
+add_library(vggt_separated SHARED
+ src/vggt_encoder_node.cpp
+ src/vggt_decoder_node.cpp)
+
+set_target_properties(vggt_separated PROPERTIES
+ COMPILE_DEFINITIONS "COMPOSITION_BUILDING_DLL"
+)
+
+ament_target_dependencies(vggt_separated
+ ${dependencies}
+ )
+
+target_link_libraries(vggt_separated ${YAML_CPP_LIBRARIES} ${PCL_LIBRARIES})
+rclcpp_components_register_nodes(vggt_separated "neuromesh::VggtEncoderNode")
+rclcpp_components_register_nodes(vggt_separated "neuromesh::VggtDecoderNode")
 
 #Control Codes
 add_library(control_implementation SHARED
@@ -189,6 +210,7 @@ install(TARGETS
   odom_republisher
   dust3r_example
   vggt_example
+  vggt_separated
   #control_implementation
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
@@ -206,6 +228,7 @@ install(FILES
   launch/full_except_bridge.py
   launch/dust3r_model_neuromesh_launch.py
   launch/vggt_model_neuromesh_launch.py
+  launch/vggt_separated_launch.py
   DESTINATION share/${PROJECT_NAME}/launch
 )
 
@@ -215,6 +238,7 @@ install(DIRECTORY config
 install(PROGRAMS 
     scripts/dust3r_model_neuromesh_launch.sh
     scripts/vggt_model_neuromesh_launch.sh
+    scripts/vggt_separated_launch.sh
     DESTINATION share/${PROJECT_NAME})
 
 ament_export_dependencies(rosidl_default_runtime)
