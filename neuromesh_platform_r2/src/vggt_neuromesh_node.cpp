@@ -192,87 +192,115 @@ void vggtNode::feature_callback(const neuromesh_interfaces::msg::Feature::Shared
 }
 
 void vggtNode::process_features() {
-    RCLCPP_DEBUG(this->get_logger(), "Processing features");
+    RCLCPP_INFO(this->get_logger(), "=== START process_features ===");
     
-    // Check if we have our own encoder result
-    if (encoder_result.valid() && 
-        encoder_result.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready) {
-        
-        auto encoder_results = encoder_result.get();
-        if (!encoder_results.empty()) {
-            // Store our own feature
-            auto own_feature = buildFeatureMessage(*encoder_results[0]);
-            feature_buffer_[id_] = std::make_shared<neuromesh_interfaces::msg::Feature>(own_feature);
-            feature_buffer_timestamp_[id_] = this->get_clock()->now().seconds();
+    try {
+        // Check if we have our own encoder result
+        RCLCPP_DEBUG(this->get_logger(), "Checking encoder result...");
+        if (encoder_result.valid() && 
+            encoder_result.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready) {
             
-            // Publish our feature for other agents
-            feature_publisher_->publish(own_feature);
+            RCLCPP_INFO(this->get_logger(), "Encoder result is ready, retrieving...");
+            auto encoder_results = encoder_result.get();
+            RCLCPP_INFO(this->get_logger(), "Retrieved %zu encoder results", encoder_results.size());
             
-            stopClock("encoder_inference");
-            RCLCPP_DEBUG(this->get_logger(), "Encoder inference took: %ld ms", checkClock("encoder_inference"));
-        }
-    }
-    
-    // Check if we have features from neighbor agents for decoder
-    if (feature_buffer_.size() >= 2) { // Need at least 2 agents (self + 1 neighbor)
-        neuromesh_interfaces::msg::Tensor own_tensor, neighbor_tensor;
-        
-        if (buildDecoderTensor(feature_buffer_, feature_buffer_timestamp_, own_tensor, neighbor_tensor)) {
-            startClock("decoder_inference");
-            
-            // Perform decoder inference - VGGT expects single concatenated tensor [2, 1036, 1024]
-            std::vector<neuromesh_interfaces::msg::Tensor> decoder_inputs = {own_tensor};
-            decoder_result_future = performInference(decoder_model_name_, decoder_inputs);
-        }
-    }
-    
-    // Check if decoder result is ready
-    if (decoder_result_future.valid() && 
-        decoder_result_future.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready) {
-        
-        auto decoder_results = decoder_result_future.get();
-        if (decoder_results.size() >= 5) { // pose_enc, depth, depth_conf, world_points, world_points_conf
-            stopClock("decoder_inference");
-            RCLCPP_DEBUG(this->get_logger(), "Decoder inference took: %ld ms", checkClock("decoder_inference"));
-            
-            // Extract decoder outputs
-            auto pose_enc = decoder_results[0];
-            auto depth = decoder_results[1];
-            auto depth_conf = decoder_results[2];
-            auto world_points = decoder_results[3];
-            auto world_points_conf = decoder_results[4];
-            
-            // Create header for outputs
-            std_msgs::msg::Header header;
-            header.stamp = this->get_clock()->now();
-            header.frame_id = id_ + "/map";
-            
-            // Publish depth images
-            auto depth_robot1 = createDepthImage(*depth, 0, header);
-            auto depth_robot2 = createDepthImage(*depth, 1, header);
-            if (depth_robot1) depth_robot1_publisher_->publish(*depth_robot1);
-            if (depth_robot2) depth_robot2_publisher_->publish(*depth_robot2);
-            
-            // Publish pointclouds
-            auto pc_current = createPointCloud(*world_points, *world_points_conf, 0, header);
-            auto pc_neighbor = createPointCloud(*world_points, *world_points_conf, 1, header);
-            if (pc_current) pointcloud_current_publisher_->publish(*pc_current);
-            if (pc_neighbor) pointcloud_neighbor_publisher_->publish(*pc_neighbor);
-            
-            // Publish RGB pointclouds
-            sensor_msgs::msg::Image::SharedPtr rgb_image;
-            {
-                std::lock_guard<std::mutex> lock(camera_msg_mutex_);
-                rgb_image = latest_camera_msg_;
-            }
-            
-            if (rgb_image) {
-                auto pc_current_rgb = createPointCloud(*world_points, *world_points_conf, 0, header, true, rgb_image);
-                auto pc_neighbor_rgb = createPointCloud(*world_points, *world_points_conf, 1, header, true, rgb_image);
-                if (pc_current_rgb) pointcloud_current_rgb_publisher_->publish(*pc_current_rgb);
-                if (pc_neighbor_rgb) pointcloud_neighbor_rgb_publisher_->publish(*pc_neighbor_rgb);
+            if (!encoder_results.empty()) {
+                // Store our own feature
+                auto own_feature = buildFeatureMessage(*encoder_results[0]);
+                feature_buffer_[id_] = std::make_shared<neuromesh_interfaces::msg::Feature>(own_feature);
+                feature_buffer_timestamp_[id_] = this->get_clock()->now().seconds();
+                
+                // Publish our feature for other agents
+                feature_publisher_->publish(own_feature);
+                
+                stopClock("encoder_inference");
+                RCLCPP_INFO(this->get_logger(), "Encoder inference took: %ld ms", checkClock("encoder_inference"));
+                RCLCPP_INFO(this->get_logger(), "Published feature for agent: %s", id_.c_str());
             }
         }
+        
+        // Check if we have features from neighbor agents for decoder
+        RCLCPP_INFO(this->get_logger(), "Current feature buffer size: %zu", feature_buffer_.size());
+        if (feature_buffer_.size() >= 2) { // Need at least 2 agents (self + 1 neighbor)
+            RCLCPP_INFO(this->get_logger(), "Have enough features for decoder, building decoder tensor...");
+            neuromesh_interfaces::msg::Tensor own_tensor, neighbor_tensor;
+            
+            if (buildDecoderTensor(feature_buffer_, feature_buffer_timestamp_, own_tensor, neighbor_tensor)) {
+                RCLCPP_INFO(this->get_logger(), "Decoder tensor built successfully, starting decoder inference...");
+                startClock("decoder_inference");
+                
+                // Perform decoder inference - VGGT expects single concatenated tensor [2, 1036, 1024]
+                std::vector<neuromesh_interfaces::msg::Tensor> decoder_inputs = {own_tensor};
+                RCLCPP_INFO(this->get_logger(), "Calling performInference with decoder model: %s", decoder_model_name_.c_str());
+                RCLCPP_INFO(this->get_logger(), "Decoder input tensor size: %zu bytes", decoder_inputs[0].data.size());
+                
+                decoder_result_future = performInference(decoder_model_name_, decoder_inputs);
+                RCLCPP_INFO(this->get_logger(), "Decoder inference started");
+            } else {
+                RCLCPP_WARN(this->get_logger(), "Failed to build decoder tensor");
+            }
+        } else {
+            RCLCPP_DEBUG(this->get_logger(), "Not enough features yet (need 2, have %zu)", feature_buffer_.size());
+        }
+        
+        // Check if decoder result is ready
+        if (decoder_result_future.valid() && 
+            decoder_result_future.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready) {
+            
+            RCLCPP_INFO(this->get_logger(), "Decoder result is ready, retrieving...");
+            auto decoder_results = decoder_result_future.get();
+            RCLCPP_INFO(this->get_logger(), "Retrieved %zu decoder results", decoder_results.size());
+            
+            if (decoder_results.size() >= 5) { // pose_enc, depth, depth_conf, world_points, world_points_conf
+                stopClock("decoder_inference");
+                RCLCPP_INFO(this->get_logger(), "Decoder inference took: %ld ms", checkClock("decoder_inference"));
+                
+                // Extract decoder outputs
+                auto pose_enc = decoder_results[0];
+                auto depth = decoder_results[1];
+                auto depth_conf = decoder_results[2];
+                auto world_points = decoder_results[3];
+                auto world_points_conf = decoder_results[4];
+                
+                // Create header for outputs
+                std_msgs::msg::Header header;
+                header.stamp = this->get_clock()->now();
+                header.frame_id = id_ + "/map";
+                
+                // Publish depth images
+                auto depth_robot1 = createDepthImage(*depth, 0, header);
+                auto depth_robot2 = createDepthImage(*depth, 1, header);
+                if (depth_robot1) depth_robot1_publisher_->publish(*depth_robot1);
+                if (depth_robot2) depth_robot2_publisher_->publish(*depth_robot2);
+                
+                // Publish pointclouds
+                auto pc_current = createPointCloud(*world_points, *world_points_conf, 0, header);
+                auto pc_neighbor = createPointCloud(*world_points, *world_points_conf, 1, header);
+                if (pc_current) pointcloud_current_publisher_->publish(*pc_current);
+                if (pc_neighbor) pointcloud_neighbor_publisher_->publish(*pc_neighbor);
+                
+                // Publish RGB pointclouds
+                sensor_msgs::msg::Image::SharedPtr rgb_image;
+                {
+                    std::lock_guard<std::mutex> lock(camera_msg_mutex_);
+                    rgb_image = latest_camera_msg_;
+                }
+                
+                if (rgb_image) {
+                    auto pc_current_rgb = createPointCloud(*world_points, *world_points_conf, 0, header, true, rgb_image);
+                    auto pc_neighbor_rgb = createPointCloud(*world_points, *world_points_conf, 1, header, true, rgb_image);
+                    if (pc_current_rgb) pointcloud_current_rgb_publisher_->publish(*pc_current_rgb);
+                    if (pc_neighbor_rgb) pointcloud_neighbor_rgb_publisher_->publish(*pc_neighbor_rgb);
+                }
+            }
+        }
+        
+        RCLCPP_INFO(this->get_logger(), "=== END process_features ===");
+        
+    } catch (const std::exception& e) {
+        RCLCPP_ERROR(this->get_logger(), "Exception in process_features: %s", e.what());
+    } catch (...) {
+        RCLCPP_ERROR(this->get_logger(), "Unknown exception in process_features");
     }
 }
 
