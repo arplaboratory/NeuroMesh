@@ -22,7 +22,6 @@
   <build_depend>python3-opencv</build_depend>
   <build_depend>cv_bridge</build_depend>
   <build_depend>rclcpp_components</build_depend>
-  <build_depend>arl_mission_maestro</build_depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>

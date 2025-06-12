@@ -12,9 +12,6 @@ def launch_setup(context):
     agent_num = LaunchConfiguration('agent_num').perform(context)
     color_raw_topic = LaunchConfiguration('color_raw_topic').perform(context)
 
-    pos1_yaml_path = os.path.join(get_package_share_directory('neuromesh_platform_r2'), 'config', 'pos1.yaml')
-    pos2_yaml_path = os.path.join(get_package_share_directory('neuromesh_platform_r2'), 'config', 'pos2.yaml')
-
     remappings = []
     for agent in agent_list.split(','):
         if agent != name:
@@ -24,18 +21,16 @@ def launch_setup(context):
     ComposableNode(
             package= 'neuromesh_platform_r2',
             namespace= name,
-            name= ['neuromesh'],
-            plugin='neuromeshNode::ToyImplementation',
+            name= ['vggt_neuromesh'],
+            plugin='vggtNode::VggtToyImplementation',
             parameters=[{'id': name,
-                        'encoder_model_name' : 'dust3r_encoder',
-                        'decoder_model_name' : 'dust3r_decoder',
+                        'encoder_model_name' : 'vggt_encoder',
+                        'decoder_model_name' : 'vggt_decoder',
                         'encoder_cycle_length' : 3000,
                         'decoder_cycle_length' : 3000,
                         'agents': agent_list,
                         'ints_to_floats': True,
-                        'pos1_yaml_path': pos1_yaml_path,
-                        'pos2_yaml_path': pos2_yaml_path,
-                        'dust3r_decoder_output_dimensions' : "2,384,512,3;2,384,512;2,384,512,3;2,384,512",
+                        'vggt_decoder_output_dimensions' : "1,2,9;1,2,392,518,1;1,2,392,518;1,2,392,518,3;1,2,392,518",
                         }],
 
             remappings=[('camera', color_raw_topic),] + remappings,
@@ -46,21 +41,21 @@ def launch_setup(context):
             namespace= name,
             name=["engine", agent_num],
             plugin="tensorrt_engine_node::TensorRTEngineNode",
-            parameters=[{'model_names' : 'dust3r_encoder,dust3r_decoder',
-                        'dust3r_encoder.model_path': get_package_share_directory('tensorrt_engine') + "/models/dust3r_encoder_single_mini_params.trt",
-                        'dust3r_encoder.input_dimensions' : "1,3,512,384",
-                        'dust3r_encoder.output_dimensions' : "1,768,1024",
-                         'dust3r_encoder.tensor_type': "fp32",
-                        'dust3r_decoder.model_path': get_package_share_directory('tensorrt_engine') + "/models/dust3r_decoder_tensor_params.trt",
-                        'dust3r_decoder.input_dimensions' : "2,768,1024;2,768,1024;2,768,2;2,768,2",
-                        'dust3r_decoder.output_dimensions' : "2,384,512,3;2,384,512;2,384,512,3;2,384,512",
-                         'dust3r_decoder.tensor_type': "fp32",
+            parameters=[{'model_names' : 'vggt_encoder,vggt_decoder',
+                        'vggt_encoder.model_path': get_package_share_directory('tensorrt_engine') + "/models/vggt_onnx_2x/vggt_image_encoder_2x.engine",
+                        'vggt_encoder.input_dimensions' : "1,3,392,518",
+                        'vggt_encoder.output_dimensions' : "1,1036,1024",
+                         'vggt_encoder.tensor_type': "fp32",
+                        'vggt_decoder.model_path': get_package_share_directory('tensorrt_engine') + "/models/vggt_onnx_2x/vggt_aggregator_2x.engine",
+                        'vggt_decoder.input_dimensions' : "2,1036,1024",
+                        'vggt_decoder.output_dimensions' : "1,2,9;1,2,392,518,1;1,2,392,518;1,2,392,518,3;1,2,392,518",
+                         'vggt_decoder.tensor_type': "fp32",
                         }],
         ),
     ]
 
     return [ComposableNodeContainer(
-        name='neuromesh_container',
+        name='vggt_container',
         namespace=name,
         package='rclcpp_components',
         executable='component_container',
@@ -94,9 +89,9 @@ def generate_launch_description():
     )
 
     agent_list_arg = DeclareLaunchArgument(
-        name='agent_list', default_value='khonsu,anubis,ra',
+        name='agent_list', default_value='khonsu,anubis',
         description=(
-            'List of all agents present (including self)'
+            'List of all agents present (including self) - default 2 robots for VGGT'
         )
     )
 

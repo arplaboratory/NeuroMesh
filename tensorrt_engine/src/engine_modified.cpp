@@ -54,6 +54,9 @@ void TensorRTEngineNode::tensor_request_callback(
               timestamp);
   RCLCPP_DEBUG(this->get_logger(), "Number of input tensors: %zu",
                request->tensor1.size());
+  for (size_t i = 0; i < request->tensor1.size(); i++) {
+    RCLCPP_DEBUG(this->get_logger(), "Tensor size (%d): %ld", i, (request->tensor1[i]).data.size());
+  }
 
   std::vector<neuromesh_interfaces::msg::Tensor> input_tensors =
       request->tensor1;
@@ -207,7 +210,7 @@ std::vector<neuromesh_interfaces::msg::Tensor> TensorRTEngineNode::execute(
   for (const auto &tensor_msg : tensor_msgs) {
     inputTensors.push_back(tensor_msg.data.data());
     inputSizes.push_back(static_cast<int>(tensor_msg.data.size()));
-    RCLCPP_DEBUG(this->get_logger(), "tensor_msg.data.size() %d",
+    RCLCPP_DEBUG(this->get_logger(), "tensor_msg.data.size() %ld",
                  tensor_msg.data.size());
   }
 
@@ -217,8 +220,7 @@ std::vector<neuromesh_interfaces::msg::Tensor> TensorRTEngineNode::execute(
     RCLCPP_DEBUG(this->get_logger(), "myfloat is %f", myfloat);
   }
 
-  size_t totalInputSize =
-      std::accumulate(inputSizes.begin(), inputSizes.end(), 0);
+  size_t totalInputSize = std::accumulate(inputSizes.begin(), inputSizes.end(), 0);
   size_t expectedInputSize = 0;
   for (size_t i = 0; i < input_lengths[model].size(); ++i) {
     RCLCPP_DEBUG(this->get_logger(), "input_lengths[model] %d",
@@ -273,28 +275,15 @@ std::vector<neuromesh_interfaces::msg::Tensor> TensorRTEngineNode::execute(
     output_msg.result = 0;
     output_msg.data_type = 9; // float32
     output_msgs.push_back(std::move(output_msg));
+    RCLCPP_DEBUG(this->get_logger(), "I: %d", i);
+    RCLCPP_DEBUG(this->get_logger(), "MODEL: %s", model.c_str());
+    RCLCPP_DEBUG(this->get_logger(), "OUTPUT TENSOR: %ld", output_dimensions[model][i]);
   }
 
   RCLCPP_DEBUG(this->get_logger(), "Returning output messages");
 
   return output_msgs;
 }
-
-// void TensorRTEngineNode::tensor_callback(const
-// std::shared_ptr<neuromesh_interfaces::msg::Tensor> msg){
-
-// 	// if(!engine_ready){
-// 	// 	RCLCPP_ERROR(this->get_logger(), "Engine not ready.");
-// 	// 	tensor_publisher_->publish(neuromesh_interfaces::msg::Tensor());
-// 	// 	return;
-// 	// }
-// 	// RCLCPP_INFO(this->get_logger(), "Received tensor from topic.");
-
-// 	// auto output_msg = execute(msg);
-
-// 	// tensor_publisher_->publish(output_msg);
-// 	// RCLCPP_INFO(this->get_logger(), "Published tensor.");
-// }
 
 int TensorRTEngineNode::tensor_string_to_typelength(std::string input) {
 
