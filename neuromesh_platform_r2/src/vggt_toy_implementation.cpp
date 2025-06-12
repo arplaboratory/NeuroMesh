@@ -58,6 +58,16 @@ VggtToyImplementation::performInference(
     auto request = std::make_shared<neuromesh_interfaces::srv::TensorRequest::Request>();
     request->model_name = model_name;
     request->tensor1 = tensors;
+    
+    RCLCPP_INFO(this->get_logger(), "Sending TensorRT request for model: %s with %zu tensors", 
+                model_name.c_str(), tensors.size());
+    for (size_t i = 0; i < tensors.size(); ++i) {
+        RCLCPP_INFO(this->get_logger(), "  Tensor %zu: dims=[%s], data_size=%zu bytes", i,
+                    tensors[i].shape.dims.empty() ? "empty" : 
+                    std::accumulate(tensors[i].shape.dims.begin(), tensors[i].shape.dims.end(), std::string(),
+                        [](const std::string& a, uint32_t b) { return a.empty() ? std::to_string(b) : a + ", " + std::to_string(b); }).c_str(),
+                    tensors[i].data.size());
+    }
 
     // Call TensorRT service
     auto future_and_request_id = tensor_client_->async_send_request(request);
@@ -66,9 +76,22 @@ VggtToyImplementation::performInference(
 
     // Process response asynchronously
     std::future<std::vector<std::shared_ptr<neuromesh_interfaces::msg::Tensor>>> return_tensors = 
-        std::async(std::launch::async, [future]() {
+        std::async(std::launch::async, [this, future, model_name]() {
             std::vector<std::shared_ptr<neuromesh_interfaces::msg::Tensor>> output_tensors;
+            
+            // Wait for response with timeout
+            auto status = future.wait_for(std::chrono::seconds(30));
+            if (status == std::future_status::timeout) {
+                RCLCPP_ERROR(this->get_logger(), "TensorRT service timeout for model: %s", model_name.c_str());
+                auto error_tensor = std::make_shared<neuromesh_interfaces::msg::Tensor>();
+                error_tensor->result = 4; // Timeout error
+                output_tensors.push_back(error_tensor);
+                return output_tensors;
+            }
+            
             auto response = future.get();
+            RCLCPP_INFO(this->get_logger(), "Received TensorRT response for model: %s with %zu output tensors", 
+                        model_name.c_str(), response->tensor2.size());
             for (const auto& tensor : response->tensor2) {
                 output_tensors.emplace_back(std::make_shared<neuromesh_interfaces::msg::Tensor>(tensor));
             }
