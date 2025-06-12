@@ -11,7 +11,12 @@ VggtToyImplementation::VggtToyImplementation(const rclcpp::NodeOptions &options)
     this->declare_parameter<std::string>("tensor_qos_profile", "default");
     this->get_parameter("tensor_qos_profile", tensor_qos_profile_);
 
+    // Create separate callback groups for encoder and decoder to prevent blocking
+    auto encoder_callback_group = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+    auto decoder_callback_group = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+
     auto main_opt = rclcpp::SubscriptionOptions();
+    main_opt.callback_group = encoder_callback_group;
 
     // Redefine subscriptions with callback groups
     auto image_qos = rclcpp::QoS(rclcpp::KeepLast(10), parseQoSString(output_qos_profile_));
@@ -22,13 +27,17 @@ VggtToyImplementation::VggtToyImplementation(const rclcpp::NodeOptions &options)
         std::bind(&VggtToyImplementation::camera_callback, this, std::placeholders::_1),
         main_opt);
 
+    // Create decoder timer in its own callback group
     decoder_timer_ = this->create_wall_timer(
         std::chrono::duration<int,std::milli>(decoder_cycle_length_), 
-        std::bind(&VggtToyImplementation::process_features, this));
+        std::bind(&VggtToyImplementation::process_features, this),
+        decoder_callback_group);
 
+    // Create encoder timer in its own callback group  
     encoder_timer_ = this->create_wall_timer(
         std::chrono::duration<int,std::milli>(encoder_cycle_length_), 
-        std::bind(&VggtToyImplementation::run_encoder_cycle, this));
+        std::bind(&VggtToyImplementation::run_encoder_cycle, this),
+        encoder_callback_group);
 
     // Define TensorRT service client
     this->tensor_client_ = create_client<neuromesh_interfaces::srv::TensorRequest>("tensorrt_request");
