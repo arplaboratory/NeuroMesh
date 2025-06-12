@@ -131,6 +131,7 @@ void vggtNode::camera_callback(const sensor_msgs::msg::Image::SharedPtr msg) {
         // Perform encoder inference
         std::vector<neuromesh_interfaces::msg::Tensor> input_tensors = {tensor};
         RCLCPP_INFO(this->get_logger(), "Calling performInference for encoder...");
+        // Always create a new future for each encoder cycle
         encoder_result = performInference(encoder_model_name_, input_tensors);
         
         fresh_encoder_cycle = false;
@@ -212,7 +213,13 @@ void vggtNode::feature_callback(const neuromesh_interfaces::msg::Feature::Shared
 }
 
 void vggtNode::process_features() {
-    RCLCPP_INFO(this->get_logger(), "=== START process_features ===");
+    auto now = std::chrono::system_clock::now();
+    auto time_since_epoch = now.time_since_epoch();
+    auto seconds = std::chrono::duration_cast<std::chrono::seconds>(time_since_epoch);
+    auto nanoseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(time_since_epoch - seconds);
+    
+    RCLCPP_INFO(this->get_logger(), "=== START process_features at %ld.%09ld ===", 
+                seconds.count(), nanoseconds.count());
     
     try {
         // Check if we have our own encoder result
@@ -224,6 +231,7 @@ void vggtNode::process_features() {
             RCLCPP_INFO(this->get_logger(), "Encoder result is ready, retrieving...");
             auto encoder_results = encoder_result.get();
             RCLCPP_INFO(this->get_logger(), "Retrieved %zu encoder results", encoder_results.size());
+            // Note: After get(), encoder_result becomes invalid and will remain so until next encoder cycle
             
             if (!encoder_results.empty() && encoder_results[0]) {
                 RCLCPP_INFO(this->get_logger(), "Encoder result tensor dims: [%s], data_size: %zu",
@@ -280,9 +288,9 @@ void vggtNode::process_features() {
             RCLCPP_DEBUG(this->get_logger(), "Not enough features yet (need 2, have %zu)", feature_buffer_.size());
         }
         
-        // Check if decoder result is ready
+        // Check if decoder result is ready (non-blocking check)
         if (decoder_result_future.valid() && 
-            decoder_result_future.wait_for(std::chrono::milliseconds(5000)) == std::future_status::ready) {
+            decoder_result_future.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready) {
             
             RCLCPP_INFO(this->get_logger(), "Decoder result is ready, retrieving...");
             auto decoder_results = decoder_result_future.get();
@@ -330,6 +338,8 @@ void vggtNode::process_features() {
                     if (pc_neighbor_rgb) pointcloud_neighbor_rgb_publisher_->publish(*pc_neighbor_rgb);
                 }
             }
+        } else if (decoder_result_future.valid()) {
+            RCLCPP_DEBUG(this->get_logger(), "Decoder result not ready yet, will check again next cycle");
         }
         
         RCLCPP_INFO(this->get_logger(), "=== END process_features ===");
@@ -649,7 +659,13 @@ std::set<std::string> vggtNode::splitAgentString(std::string str) {
 }
 
 void vggtNode::run_encoder_cycle() {
-    RCLCPP_INFO(this->get_logger(), "=== run_encoder_cycle called, setting fresh_encoder_cycle = true ===");
+    auto now = std::chrono::system_clock::now();
+    auto time_since_epoch = now.time_since_epoch();
+    auto seconds = std::chrono::duration_cast<std::chrono::seconds>(time_since_epoch);
+    auto nanoseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(time_since_epoch - seconds);
+    
+    RCLCPP_INFO(this->get_logger(), "=== run_encoder_cycle called at %ld.%09ld, setting fresh_encoder_cycle = true ===",
+                seconds.count(), nanoseconds.count());
     fresh_encoder_cycle = true;
 }
 
