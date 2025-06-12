@@ -53,7 +53,7 @@ VggtToyImplementation::performInference(
     RCLCPP_INFO(this->get_logger(), "=== START performInference for model: %s ===", model_name.c_str());
     
     try {
-        if (!tensor_client_->wait_for_service(std::chrono::seconds(1))) {
+        if (!tensor_client_->wait_for_service(std::chrono::milliseconds(100))) {
             RCLCPP_ERROR(this->get_logger(), "TensorRT engine not reachable via service.");
             
             // Return future that resolves to error tensor
