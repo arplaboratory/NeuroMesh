@@ -76,7 +76,7 @@ def launch_setup(context):
             (f"/{name}/gnn_output_{agent}", f"/{agent}/gnn_output_{agent}")
         )
 
-    remappings.append(("position_topic", f"/{name}/odometry/global"))
+    remappings.append(("position_topic", f"/{name}/odometry/local"))
 
     composable_nodes = []
     composable_nodes.append(
@@ -152,27 +152,27 @@ def launch_setup(context):
     )
 
     # If the number of agents is less than complete list, add the odom_republisher nodes
-    if len(complete_agent_list) > len(agent_list):
+    if len(complete_agent_list) > len(agent_list) and LaunchConfiguration("odom_republisher").perform(context) == "True":
         print(f"Number of agents is less than {len(complete_agent_list)}. Adding odom_republisher nodes!")
         missing_agents = set(complete_agent_list) - set(agent_list)
         for missing_agent in missing_agents:
             remappings = []
             for i, agent in enumerate(complete_agent_list):
-                print(f"remapping {agent} to {missing_agent}")
+                # print(f"remapping {agent} to {missing_agent}")
                 remappings.append((f"/{missing_agent}/features_{agent}", f"/{agent}/features_{agent}"))
                 remappings.append(
                     (f"/{missing_agent}/gnn_output_{agent}", f"/{agent}/gnn_output_{agent}")
                 )
 
-            remappings.append(("position_topic", f"/{name}/odometry/global"))
+            remappings.append(("position_topic", f"/{name}/odometry/local"))
             composable_nodes.append(
                 ComposableNode(
                     package="neuromesh_platform_r2",
                     plugin="odom_republisher::OdomRepublisher",
                     name=f"odom_republisher_{missing_agent}",
                     remappings=[
-                        ("original/odom", f"/{name}/odometry/global"),
-                        ("republished/odom", f"/{missing_agent}/odometry/global"),
+                        ("original/odom", f"/{name}/odometry/local"),
+                        ("republished/odom", f"/{missing_agent}/odometry/local"),
                     ],
                     condition=IfCondition(odom_republisher),
                 )
