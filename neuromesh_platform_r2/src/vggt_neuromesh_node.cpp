@@ -220,8 +220,8 @@ void vggtNode::process_features() {
         if (buildDecoderTensor(feature_buffer_, feature_buffer_timestamp_, own_tensor, neighbor_tensor)) {
             startClock("decoder_inference");
             
-            // Perform decoder inference
-            std::vector<neuromesh_interfaces::msg::Tensor> decoder_inputs = {own_tensor, neighbor_tensor};
+            // Perform decoder inference - VGGT expects single concatenated tensor [2, 1036, 1024]
+            std::vector<neuromesh_interfaces::msg::Tensor> decoder_inputs = {own_tensor};
             decoder_result_future = performInference(decoder_model_name_, decoder_inputs);
         }
     }
