@@ -106,25 +106,38 @@ vggtNode::vggtNode(const rclcpp::NodeOptions &options): Node("vggt_node", option
 }
 
 void vggtNode::camera_callback(const sensor_msgs::msg::Image::SharedPtr msg) {
-    RCLCPP_DEBUG(this->get_logger(), "Camera callback triggered");
+    RCLCPP_INFO(this->get_logger(), "=== Camera callback triggered ===");
     
     {
         std::lock_guard<std::mutex> lock(camera_msg_mutex_);
         latest_camera_msg_ = msg;
     }
 
+    RCLCPP_INFO(this->get_logger(), "fresh_encoder_cycle: %s, encoder_cycle_count: %d", 
+                fresh_encoder_cycle ? "true" : "false", encoder_cycle_count_);
+
     if (fresh_encoder_cycle) {
+        RCLCPP_INFO(this->get_logger(), "Starting encoder inference...");
         startClock("encoder_inference");
         
         // Convert image to tensor with VGGT preprocessing
         auto tensor = imageToTensor(msg);
+        RCLCPP_INFO(this->get_logger(), "Image converted to tensor: dims=[%s], data_size=%zu", 
+                    tensor.shape.dims.empty() ? "empty" : 
+                    std::accumulate(tensor.shape.dims.begin(), tensor.shape.dims.end(), std::string(),
+                        [](const std::string& a, uint32_t b) { return a.empty() ? std::to_string(b) : a + ", " + std::to_string(b); }).c_str(),
+                    tensor.data.size());
         
         // Perform encoder inference
         std::vector<neuromesh_interfaces::msg::Tensor> input_tensors = {tensor};
+        RCLCPP_INFO(this->get_logger(), "Calling performInference for encoder...");
         encoder_result = performInference(encoder_model_name_, input_tensors);
         
         fresh_encoder_cycle = false;
         encoder_cycle_count_++;
+        RCLCPP_INFO(this->get_logger(), "Encoder inference started, cycle count: %d", encoder_cycle_count_);
+    } else {
+        RCLCPP_DEBUG(this->get_logger(), "Skipping encoder inference - not a fresh cycle");
     }
 }
 
@@ -185,10 +198,17 @@ vggtNode::imageToTensor(const sensor_msgs::msg::Image::SharedPtr msg) {
 }
 
 void vggtNode::feature_callback(const neuromesh_interfaces::msg::Feature::SharedPtr msg) {
-    RCLCPP_DEBUG(this->get_logger(), "Feature callback from agent: %s", msg->id.c_str());
+    RCLCPP_INFO(this->get_logger(), "=== Feature callback from agent: %s ===", msg->id.c_str());
+    RCLCPP_INFO(this->get_logger(), "Feature tensor dims: [%s], data_size: %zu",
+                msg->tensor.shape.dims.empty() ? "empty" : 
+                std::accumulate(msg->tensor.shape.dims.begin(), msg->tensor.shape.dims.end(), std::string(),
+                    [](const std::string& a, uint32_t b) { return a.empty() ? std::to_string(b) : a + ", " + std::to_string(b); }).c_str(),
+                msg->tensor.data.size());
     
     feature_buffer_[msg->id] = msg;
     feature_buffer_timestamp_[msg->id] = this->get_clock()->now().seconds();
+    
+    RCLCPP_INFO(this->get_logger(), "Feature buffer updated, current size: %zu", feature_buffer_.size());
 }
 
 void vggtNode::process_features() {
@@ -196,7 +216,8 @@ void vggtNode::process_features() {
     
     try {
         // Check if we have our own encoder result
-        RCLCPP_DEBUG(this->get_logger(), "Checking encoder result...");
+        RCLCPP_INFO(this->get_logger(), "Checking encoder result validity: %s", 
+                    encoder_result.valid() ? "valid" : "invalid");
         if (encoder_result.valid() && 
             encoder_result.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready) {
             
@@ -204,19 +225,35 @@ void vggtNode::process_features() {
             auto encoder_results = encoder_result.get();
             RCLCPP_INFO(this->get_logger(), "Retrieved %zu encoder results", encoder_results.size());
             
-            if (!encoder_results.empty()) {
-                // Store our own feature
-                auto own_feature = buildFeatureMessage(*encoder_results[0]);
-                feature_buffer_[id_] = std::make_shared<neuromesh_interfaces::msg::Feature>(own_feature);
-                feature_buffer_timestamp_[id_] = this->get_clock()->now().seconds();
+            if (!encoder_results.empty() && encoder_results[0]) {
+                RCLCPP_INFO(this->get_logger(), "Encoder result tensor dims: [%s], data_size: %zu",
+                            encoder_results[0]->shape.dims.empty() ? "empty" : 
+                            std::accumulate(encoder_results[0]->shape.dims.begin(), encoder_results[0]->shape.dims.end(), std::string(),
+                                [](const std::string& a, uint32_t b) { return a.empty() ? std::to_string(b) : a + ", " + std::to_string(b); }).c_str(),
+                            encoder_results[0]->data.size());
                 
-                // Publish our feature for other agents
-                feature_publisher_->publish(own_feature);
-                
-                stopClock("encoder_inference");
-                RCLCPP_INFO(this->get_logger(), "Encoder inference took: %ld ms", checkClock("encoder_inference"));
-                RCLCPP_INFO(this->get_logger(), "Published feature for agent: %s", id_.c_str());
+                // Check if the tensor has valid data
+                if (encoder_results[0]->data.empty() || encoder_results[0]->shape.dims.empty()) {
+                    RCLCPP_ERROR(this->get_logger(), "Encoder returned empty tensor data or dimensions!");
+                } else {
+                    // Store our own feature
+                    auto own_feature = buildFeatureMessage(*encoder_results[0]);
+                    feature_buffer_[id_] = std::make_shared<neuromesh_interfaces::msg::Feature>(own_feature);
+                    feature_buffer_timestamp_[id_] = this->get_clock()->now().seconds();
+                    
+                    // Publish our feature for other agents
+                    feature_publisher_->publish(own_feature);
+                    
+                    stopClock("encoder_inference");
+                    RCLCPP_INFO(this->get_logger(), "Encoder inference took: %ld ms", checkClock("encoder_inference"));
+                    RCLCPP_INFO(this->get_logger(), "Published feature for agent: %s with tensor size: %zu bytes", 
+                                id_.c_str(), own_feature.tensor.data.size());
+                }
+            } else {
+                RCLCPP_WARN(this->get_logger(), "Encoder results empty or null!");
             }
+        } else {
+            RCLCPP_DEBUG(this->get_logger(), "Encoder result not ready yet");
         }
         
         // Check if we have features from neighbor agents for decoder
@@ -245,7 +282,7 @@ void vggtNode::process_features() {
         
         // Check if decoder result is ready
         if (decoder_result_future.valid() && 
-            decoder_result_future.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready) {
+            decoder_result_future.wait_for(std::chrono::milliseconds(5000)) == std::future_status::ready) {
             
             RCLCPP_INFO(this->get_logger(), "Decoder result is ready, retrieving...");
             auto decoder_results = decoder_result_future.get();
@@ -537,10 +574,19 @@ vggtNode::performInference(const std::string &model_name,
 
 neuromesh_interfaces::msg::Feature 
 vggtNode::buildFeatureMessage(const neuromesh_interfaces::msg::Tensor &tensor) {
+    RCLCPP_INFO(this->get_logger(), "=== buildFeatureMessage called ===");
+    RCLCPP_INFO(this->get_logger(), "Input tensor dims: [%s], data_size: %zu", 
+                tensor.shape.dims.empty() ? "empty" : 
+                std::accumulate(tensor.shape.dims.begin(), tensor.shape.dims.end(), std::string(),
+                    [](const std::string& a, uint32_t b) { return a.empty() ? std::to_string(b) : a + ", " + std::to_string(b); }).c_str(),
+                tensor.data.size());
+    
     neuromesh_interfaces::msg::Feature feature_msg;
     feature_msg.tensor = tensor;
     feature_msg.id = id_;
     feature_msg.timestamp = this->get_clock()->now();
+    
+    RCLCPP_INFO(this->get_logger(), "Built feature message for agent: %s", id_.c_str());
     return feature_msg;
 }
 
@@ -603,6 +649,7 @@ std::set<std::string> vggtNode::splitAgentString(std::string str) {
 }
 
 void vggtNode::run_encoder_cycle() {
+    RCLCPP_INFO(this->get_logger(), "=== run_encoder_cycle called, setting fresh_encoder_cycle = true ===");
     fresh_encoder_cycle = true;
 }
 
