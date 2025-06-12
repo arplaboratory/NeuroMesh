@@ -98,6 +98,11 @@ vggtNode::vggtNode(const rclcpp::NodeOptions &options): Node("vggt_node", option
     encoder_timer_ = this->create_wall_timer(
         std::chrono::milliseconds(encoder_cycle_length_),
         std::bind(&vggtNode::run_encoder_cycle, this));
+    
+    // Create timer to check encoder results more frequently (100ms)
+    encoder_result_timer_ = this->create_wall_timer(
+        std::chrono::milliseconds(100),
+        std::bind(&vggtNode::process_encoder_result, this));
 
     fresh_encoder_cycle = true;
 
@@ -212,6 +217,46 @@ void vggtNode::feature_callback(const neuromesh_interfaces::msg::Feature::Shared
     RCLCPP_INFO(this->get_logger(), "Feature buffer updated, current size: %zu", feature_buffer_.size());
 }
 
+void vggtNode::process_encoder_result() {
+    // Check if we have our own encoder result
+    if (encoder_result.valid() && 
+        encoder_result.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready) {
+        
+        RCLCPP_INFO(this->get_logger(), "Encoder result is ready, retrieving...");
+        auto encoder_results = encoder_result.get();
+        RCLCPP_INFO(this->get_logger(), "Retrieved %zu encoder results", encoder_results.size());
+        // Note: After get(), encoder_result becomes invalid and will remain so until next encoder cycle
+        
+        if (!encoder_results.empty() && encoder_results[0]) {
+            RCLCPP_INFO(this->get_logger(), "Encoder result tensor dims: [%s], data_size: %zu",
+                        encoder_results[0]->shape.dims.empty() ? "empty" : 
+                        std::accumulate(encoder_results[0]->shape.dims.begin(), encoder_results[0]->shape.dims.end(), std::string(),
+                            [](const std::string& a, uint32_t b) { return a.empty() ? std::to_string(b) : a + ", " + std::to_string(b); }).c_str(),
+                        encoder_results[0]->data.size());
+            
+            // Check if the tensor has valid data
+            if (encoder_results[0]->data.empty() || encoder_results[0]->shape.dims.empty()) {
+                RCLCPP_ERROR(this->get_logger(), "Encoder returned empty tensor data or dimensions!");
+            } else {
+                // Store our own feature
+                auto own_feature = buildFeatureMessage(*encoder_results[0]);
+                feature_buffer_[id_] = std::make_shared<neuromesh_interfaces::msg::Feature>(own_feature);
+                feature_buffer_timestamp_[id_] = this->get_clock()->now().seconds();
+                
+                // Publish our feature for other agents
+                feature_publisher_->publish(own_feature);
+                
+                stopClock("encoder_inference");
+                RCLCPP_INFO(this->get_logger(), "Encoder inference took: %ld ms", checkClock("encoder_inference"));
+                RCLCPP_INFO(this->get_logger(), "Published feature for agent: %s with tensor size: %zu bytes", 
+                            id_.c_str(), own_feature.tensor.data.size());
+            }
+        } else {
+            RCLCPP_WARN(this->get_logger(), "Encoder results empty or null!");
+        }
+    }
+}
+
 void vggtNode::process_features() {
     auto now = std::chrono::system_clock::now();
     auto time_since_epoch = now.time_since_epoch();
@@ -222,47 +267,8 @@ void vggtNode::process_features() {
                 seconds.count(), nanoseconds.count());
     
     try {
-        // Check if we have our own encoder result
-        RCLCPP_INFO(this->get_logger(), "Checking encoder result validity: %s", 
-                    encoder_result.valid() ? "valid" : "invalid");
-        if (encoder_result.valid() && 
-            encoder_result.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready) {
-            
-            RCLCPP_INFO(this->get_logger(), "Encoder result is ready, retrieving...");
-            auto encoder_results = encoder_result.get();
-            RCLCPP_INFO(this->get_logger(), "Retrieved %zu encoder results", encoder_results.size());
-            // Note: After get(), encoder_result becomes invalid and will remain so until next encoder cycle
-            
-            if (!encoder_results.empty() && encoder_results[0]) {
-                RCLCPP_INFO(this->get_logger(), "Encoder result tensor dims: [%s], data_size: %zu",
-                            encoder_results[0]->shape.dims.empty() ? "empty" : 
-                            std::accumulate(encoder_results[0]->shape.dims.begin(), encoder_results[0]->shape.dims.end(), std::string(),
-                                [](const std::string& a, uint32_t b) { return a.empty() ? std::to_string(b) : a + ", " + std::to_string(b); }).c_str(),
-                            encoder_results[0]->data.size());
-                
-                // Check if the tensor has valid data
-                if (encoder_results[0]->data.empty() || encoder_results[0]->shape.dims.empty()) {
-                    RCLCPP_ERROR(this->get_logger(), "Encoder returned empty tensor data or dimensions!");
-                } else {
-                    // Store our own feature
-                    auto own_feature = buildFeatureMessage(*encoder_results[0]);
-                    feature_buffer_[id_] = std::make_shared<neuromesh_interfaces::msg::Feature>(own_feature);
-                    feature_buffer_timestamp_[id_] = this->get_clock()->now().seconds();
-                    
-                    // Publish our feature for other agents
-                    feature_publisher_->publish(own_feature);
-                    
-                    stopClock("encoder_inference");
-                    RCLCPP_INFO(this->get_logger(), "Encoder inference took: %ld ms", checkClock("encoder_inference"));
-                    RCLCPP_INFO(this->get_logger(), "Published feature for agent: %s with tensor size: %zu bytes", 
-                                id_.c_str(), own_feature.tensor.data.size());
-                }
-            } else {
-                RCLCPP_WARN(this->get_logger(), "Encoder results empty or null!");
-            }
-        } else {
-            RCLCPP_DEBUG(this->get_logger(), "Encoder result not ready yet");
-        }
+        // Process encoder results if available
+        process_encoder_result();
         
         // Check if we have features from neighbor agents for decoder
         RCLCPP_INFO(this->get_logger(), "Current feature buffer size: %zu", feature_buffer_.size());
