@@ -7,7 +7,7 @@ from launch_ros.actions import ComposableNodeContainer
 from launch_ros.descriptions import ComposableNode
 
 def launch_setup(context):
-    name = LaunchConfiguration('name').perform(context)
+    name = LaunchConfiguration('robot_name').perform(context)
     agent_list = LaunchConfiguration('agent_list').perform(context)
     agent_num = LaunchConfiguration('agent_num').perform(context)
     color_raw_topic = LaunchConfiguration('color_raw_topic').perform(context)
@@ -27,6 +27,49 @@ def launch_setup(context):
             remappings.append((f'features_{agent}', f'/{agent}/features_{agent}'))
     
     composable_nodes = [
+        # TensorRT Engine Node for Encoder
+        ComposableNode(
+            package='tensorrt_engine',
+            namespace=name,
+            name="tensorrt_encoder",
+            plugin="tensorrt_engine_node::TensorRTEngineNode",
+            parameters=[{
+                'model_names': 'vggt_image_encoder_2x.engine',
+                'vggt_image_encoder_2x.engine.model_path': os.path.join(
+                    get_package_share_directory('tensorrt_engine'),
+                    'models/vggt_onnx_2x/vggt_image_encoder_2x.engine'
+                ),
+                'vggt_image_encoder_2x.engine.input_dimensions': "1,3,392,518",
+                'vggt_image_encoder_2x.engine.output_dimensions': "1,1036,1024",
+                'vggt_image_encoder_2x.engine.tensor_type': "fp32",
+            }],
+            remappings=[
+                ('tensorrt_request', 'tensorrt_request_encoder'),
+                ('tensorrt_output', 'tensorrt_output_encoder')
+            ],
+        ),
+        
+        # TensorRT Engine Node for Decoder
+        ComposableNode(
+            package='tensorrt_engine',
+            namespace=name,
+            name="tensorrt_decoder",
+            plugin="tensorrt_engine_node::TensorRTEngineNode",
+            parameters=[{
+                'model_names': 'vggt_aggregator_2x.engine',
+                'vggt_aggregator_2x.engine.model_path': os.path.join(
+                    get_package_share_directory('tensorrt_engine'),
+                    'models/vggt_onnx_2x/vggt_aggregator_2x.engine'
+                ),
+                'vggt_aggregator_2x.engine.input_dimensions': "2,1036,1024",
+                'vggt_aggregator_2x.engine.output_dimensions': "1,2,9;1,2,392,518,1;1,2,392,518;1,2,392,518,3;1,2,392,518",
+                'vggt_aggregator_2x.engine.tensor_type': "fp32",
+            }],
+            remappings=[
+                ('tensorrt_request', 'tensorrt_request_decoder'),
+                ('tensorrt_output', 'tensorrt_output_decoder')
+            ],
+        ),
         # VGGT Encoder Node
         ComposableNode(
             package='neuromesh_platform_r2',
@@ -46,7 +89,6 @@ def launch_setup(context):
             ],
             remappings=[('camera', color_raw_topic)],
         ),
-        
         # VGGT Decoder Node
         ComposableNode(
             package='neuromesh_platform_r2',
@@ -65,32 +107,7 @@ def launch_setup(context):
                 }
             ],
             remappings=remappings,
-        ),
-        
-        # TensorRT Engine Node
-        ComposableNode(
-            package='tensorrt_engine',
-            namespace=name,
-            name=["engine", agent_num],
-            plugin="tensorrt_engine_node::TensorRTEngineNode",
-            parameters=[{
-                'model_names': 'vggt_image_encoder_2x.engine,vggt_aggregator_2x.engine',
-                'vggt_image_encoder_2x.engine.model_path': os.path.join(
-                    get_package_share_directory('tensorrt_engine'),
-                    'models/vggt_onnx_2x/vggt_image_encoder_2x.engine'
-                ),
-                'vggt_image_encoder_2x.engine.input_dimensions': "1,3,392,518",
-                'vggt_image_encoder_2x.engine.output_dimensions': "1,1036,1024",
-                'vggt_image_encoder_2x.engine.tensor_type': "fp32",
-                'vggt_aggregator_2x.engine.model_path': os.path.join(
-                    get_package_share_directory('tensorrt_engine'),
-                    'models/vggt_onnx_2x/vggt_aggregator_2x.engine'
-                ),
-                'vggt_aggregator_2x.engine.input_dimensions': "2,1036,1024",
-                'vggt_aggregator_2x.engine.output_dimensions': "1,2,9;1,2,392,518,1;1,2,392,518;1,2,392,518,3;1,2,392,518",
-                'vggt_aggregator_2x.engine.tensor_type': "fp32",
-            }],
-        ),
+        ),    
     ]
     
     return [ComposableNodeContainer(
@@ -100,14 +117,13 @@ def launch_setup(context):
         executable='component_container_mt',  # Use multi-threaded executor
         composable_node_descriptions=composable_nodes,
         output='screen',
-        arguments=['--ros-args', '--log-level', log_level],
         # Use multi-threaded executor with intra-process communication
-        ros_arguments=['--ros-args', '--log-level', log_level, '-p', 'use_intra_process_comms:=true'],
+        arguments=['--ros-args', '--log-level', log_level, '-p', 'use_intra_process_comms:=true'],
     )]
 
 def generate_launch_description():
-    name_arg = DeclareLaunchArgument(
-        name='name',
+    robot_name_arg = DeclareLaunchArgument(
+        name='robot_name',
         default_value='khonsu',
         description='Which robot we are running'
     )
@@ -116,7 +132,7 @@ def generate_launch_description():
         name='color_raw_topic',
         default_value=[
             TextSubstitution(text='/'),
-            LaunchConfiguration('name'),
+            LaunchConfiguration('robot_name'),
             TextSubstitution(text='/sensors/camera_0/camera/color/image_raw')
         ],
         description='Camera topic to be remapped',
@@ -143,7 +159,7 @@ def generate_launch_description():
     opaque_function_action = OpaqueFunction(function=launch_setup)
     
     return LaunchDescription([
-        name_arg,
+        robot_name_arg,
         agent_num_arg,
         agent_list_arg,
         color_raw_topic_arg,

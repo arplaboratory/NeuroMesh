@@ -15,7 +15,7 @@ echo "Agent list: $AGENT_LIST"
 echo "Camera topic: $COLOR_RAW_TOPIC"
 
 ros2 launch neuromesh_platform_r2 vggt_separated_launch.py \
-    name:=$ROBOT_NAME \
+    robot_name:=$ROBOT_NAME \
     agent_num:=$AGENT_NUM \
     agent_list:=$AGENT_LIST \
     color_raw_topic:=$COLOR_RAW_TOPIC
