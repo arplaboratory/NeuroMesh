@@ -9,9 +9,10 @@
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
-  <build_depend>neuromesh_platform_r2</build_depend>
-  <exec_depend>neuromesh_platform_r2</exec_depend>
+  <!--build_depend>neuromesh_platform_r2</build_depend-->
+  <!--exec_depend>neuromesh_platform_r2</exec_depend-->
   <build_depend>rclcpp_components</build_depend>
+  <exec_depend>rclcpp_components</exec_depend>
   <build_depend>tensorrt</build_depend>
 
   <test_depend>ament_lint_auto</test_depend>
@@ -19,5 +20,10 @@
 
   <export>
     <build_type>ament_cmake</build_type>
+    <rclcpp_components plugin="tensorrt_engine">
+      <class type="tensorrt_engine_node::TensorRTEngineNode" base_class_type="rclcpp::Node">
+        <description>TensorRT Engine Node</description>
+      </class>
+    </rclcpp_components>
   </export>
 </package>

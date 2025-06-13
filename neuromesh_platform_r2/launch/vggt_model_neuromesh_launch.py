@@ -11,6 +11,7 @@ def launch_setup(context):
     agent_list = LaunchConfiguration('agent_list').perform(context)
     agent_num = LaunchConfiguration('agent_num').perform(context)
     color_raw_topic = LaunchConfiguration('color_raw_topic').perform(context)
+    log_level = LaunchConfiguration('log_level').perform(context)
 
     remappings = []
     for agent in agent_list.split(','):
@@ -58,9 +59,13 @@ def launch_setup(context):
         name='vggt_container',
         namespace=name,
         package='rclcpp_components',
-        executable='component_container',
+        executable='component_container_mt',  # Use multi-threaded executor
         composable_node_descriptions=composable_nodes,
         output='screen',
+        arguments=['--ros-args', '--log-level', log_level],
+        additional_env={'ROS_DOMAIN_ID': EnvironmentVariable('ROS_DOMAIN_ID', default_value='0')},
+        # Use multi-threaded executor with 4 threads
+        ros_arguments=['--ros-args', '--log-level', log_level, '-p', 'use_intra_process_comms:=true'],
     )]
 
 def generate_launch_description():
@@ -95,6 +100,13 @@ def generate_launch_description():
         )
     )
 
+    log_level_arg = DeclareLaunchArgument(
+        name='log_level', default_value='INFO',
+        description=(
+            'Log level for all nodes (DEBUG, INFO, WARN, ERROR, FATAL)'
+        )
+    )
+
     opaque_function_action = OpaqueFunction(function=launch_setup)
 
     return LaunchDescription([
@@ -102,5 +114,6 @@ def generate_launch_description():
         agent_num_arg,
         agent_list_arg,
         color_raw_topic_arg,
+        log_level_arg,
         opaque_function_action,
     ])

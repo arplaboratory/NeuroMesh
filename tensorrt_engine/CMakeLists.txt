@@ -68,4 +68,5 @@ install(DIRECTORY launch
 install(DIRECTORY models
   DESTINATION share/${PROJECT_NAME})
 
+ament_export_libraries(tensorrt_engine)
 ament_package()

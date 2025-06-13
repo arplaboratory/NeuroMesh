@@ -4,8 +4,21 @@
               namespace: "/",
               domain: 80, // NOTE: This should match the ROS_DOMAIN_ID environment variable on this robot, and should be unique for each robot
               allow: {
-                  publishers: [".*/features.*", ".*/gnn.*"],
-                  subscribers: [".*/features.*", ".*/gnn.*"],
+                  publishers: [
+                      ".*/features.*",           // Feature messages for multi-robot coordination
+                      ".*/gnn.*",                // GNN messages
+                      ".*/depth_robot[0-9]+",    // VGGT depth images (depth_robot1, depth_robot2, etc.)
+                      ".*/pointcloud_.*",        // VGGT pointclouds (current/neighbor/rgb variants)
+                      ".*/vggt_output",          // VGGT tensor output
+                      ".*_pts3d_.*"              // Legacy pointcloud format if needed
+                  ],
+                  subscribers: [
+                      ".*/features.*",           // Feature messages for multi-robot coordination
+                      ".*/gnn.*",                // GNN messages
+                      ".*/depth_robot[0-9]+",    // VGGT depth images (depth_robot1, depth_robot2, etc.)
+                      ".*/pointcloud_.*",        // VGGT pointclouds
+                      ".*/cmd_vel"               // Velocity commands if needed
+                  ],
                   service_servers: [".*/mav_services/.*"],
                   service_clients: [".*/mav_services/.*"],
                   action_servers: [],
