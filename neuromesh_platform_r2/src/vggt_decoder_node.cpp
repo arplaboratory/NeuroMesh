@@ -1,6 +1,7 @@
 #include "neuromesh_platform_r2/vggt_decoder_node.h"
 #include <pcl/common/transforms.h>
 #include <tf2/LinearMath/Quaternion.h>
+#include <limits>
 
 namespace neuromesh {
 
@@ -86,6 +87,14 @@ VggtDecoderNode::VggtDecoderNode(const rclcpp::NodeOptions& options)
         RCLCPP_INFO(this->get_logger(), "Subscribed to features from: %s", feature_topic.c_str());
     }
     
+    // Create RGB image subscription for the current robot
+    std::string rgb_topic = "/" + robot_name_ + "/resized_rgb";
+    auto rgb_qos = rclcpp::QoS(10).reliability(rclcpp::ReliabilityPolicy::Reliable);
+    rgb_image_sub_ = this->create_subscription<sensor_msgs::msg::Image>(
+        rgb_topic, rgb_qos,
+        std::bind(&VggtDecoderNode::rgb_image_callback, this, std::placeholders::_1));
+    RCLCPP_INFO(this->get_logger(), "Subscribed to RGB images from: %s", rgb_topic.c_str());
+    
     // Create output publishers
     for (int i = 0; i < num_robots_; ++i) {
         std::string depth_topic = "/" + robot_name_ + "/depth_robot" + std::to_string(i + 1);
@@ -118,10 +127,32 @@ void VggtDecoderNode::feature_callback(const neuromesh_interfaces::msg::Feature:
     // Update feature buffer
     feature_buffer_[msg->id] = msg;
     feature_timestamps_[msg->id] = this->now();
+}
+
+void VggtDecoderNode::rgb_image_callback(const sensor_msgs::msg::Image::SharedPtr msg) {
+    std::lock_guard<std::mutex> lock(rgb_mutex_);
     
-    // If this is from the current robot and includes RGB data, store it
-    if (msg->id == robot_name_ && msg->tensor.shape.dims.size() > 3) {
-        // TODO: Extract RGB image from tensor if included
+    try {
+        // Convert ROS image to OpenCV
+        cv_bridge::CvImagePtr cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::RGB8);
+        
+        // Add to buffer
+        RgbImageData rgb_data;
+        rgb_data.image = cv_ptr->image.clone();
+        rgb_data.timestamp = msg->header.stamp;
+        
+        rgb_image_buffer_.push_back(rgb_data);
+        
+        // Keep only the last MAX_RGB_BUFFER_SIZE images
+        while (rgb_image_buffer_.size() > MAX_RGB_BUFFER_SIZE) {
+            rgb_image_buffer_.pop_front();
+        }
+        
+        RCLCPP_DEBUG(this->get_logger(), "Received RGB image with timestamp: %d.%d, buffer size: %zu", 
+                     msg->header.stamp.sec, msg->header.stamp.nanosec, rgb_image_buffer_.size());
+                     
+    } catch (cv_bridge::Exception& e) {
+        RCLCPP_ERROR(this->get_logger(), "cv_bridge exception in RGB callback: %s", e.what());
     }
 }
 
@@ -390,14 +421,30 @@ void VggtDecoderNode::process_decoder_output(
             }
             
             // Create RGB point cloud if we have color data for current robot
-            if (robot_idx == 0 && !rgb_image_buffer_.empty()) {
-                std::lock_guard<std::mutex> rgb_lock(rgb_mutex_);
-                if (rgb_image_buffer_.find(robot_name_) != rgb_image_buffer_.end()) {
+            if (robot_idx == 0) {
+                // Get the timestamp of the current robot's features
+                rclcpp::Time feature_timestamp;
+                {
+                    std::lock_guard<std::mutex> feature_lock(feature_mutex_);
+                    if (feature_buffer_.find(robot_name_) != feature_buffer_.end()) {
+                        feature_timestamp = feature_buffer_[robot_name_]->timestamp;
+                    } else {
+                        feature_timestamp = this->now();
+                    }
+                }
+                
+                // Find the RGB image with the closest timestamp
+                cv::Mat rgb_image;
+                if (find_closest_rgb_image(feature_timestamp, rgb_image)) {
                     auto rgb_pointcloud = create_rgb_point_cloud(
                         robot_points, robot_points_conf,
-                        rgb_image_buffer_[robot_name_],
+                        rgb_image,
                         depth_width_, depth_height_, frame_id);
                     rgb_pointcloud_pub_->publish(rgb_pointcloud);
+                    RCLCPP_DEBUG(this->get_logger(), "Published RGB point cloud");
+                } else {
+                    RCLCPP_INFO(this->get_logger(), 
+                               "No RGB image found within acceptable timestamp range, skipping RGB point cloud");
                 }
             }
         }
@@ -541,6 +588,41 @@ long VggtDecoderNode::check_clock(const std::string& name) {
         return std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
     }
     return -1;
+}
+
+bool VggtDecoderNode::find_closest_rgb_image(const rclcpp::Time& target_time, cv::Mat& rgb_image) {
+    std::lock_guard<std::mutex> lock(rgb_mutex_);
+    
+    if (rgb_image_buffer_.empty()) {
+        return false;
+    }
+    
+    // Find the RGB image with the closest timestamp
+    double min_time_diff = std::numeric_limits<double>::max();
+    size_t best_idx = 0;
+    
+    for (size_t i = 0; i < rgb_image_buffer_.size(); ++i) {
+        double time_diff = std::abs((rgb_image_buffer_[i].timestamp - target_time).seconds());
+        if (time_diff < min_time_diff) {
+            min_time_diff = time_diff;
+            best_idx = i;
+        }
+    }
+    
+    // Maximum allowed time difference (0.1 seconds)
+    const double MAX_TIME_DIFF = 0.1;
+    
+    if (min_time_diff > MAX_TIME_DIFF) {
+        RCLCPP_DEBUG(this->get_logger(), 
+                     "No RGB image found within %.2f seconds of target time. Closest was %.3f seconds away.",
+                     MAX_TIME_DIFF, min_time_diff);
+        return false;
+    }
+    
+    rgb_image = rgb_image_buffer_[best_idx].image.clone();
+    RCLCPP_DEBUG(this->get_logger(), "Found RGB image with time difference: %.3f seconds", min_time_diff);
+    
+    return true;
 }
 
 }  // namespace neuromesh
