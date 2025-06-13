@@ -31,6 +31,9 @@ private:
     void publish_features(const neuromesh_interfaces::msg::Tensor& tensor);
     neuromesh_interfaces::msg::Feature build_feature_message(const neuromesh_interfaces::msg::Tensor& tensor);
     
+    // QoS configuration
+    rclcpp::QoS create_image_qos();
+    
     // Async inference
     std::future<std::vector<std::shared_ptr<neuromesh_interfaces::msg::Tensor>>> 
         perform_inference(const std::vector<neuromesh_interfaces::msg::Tensor>& inputs);

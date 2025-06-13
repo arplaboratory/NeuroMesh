@@ -1,0 +1,10 @@
+# Example of overriding QoS settings for VGGT encoder image subscription
+# This file can be passed as additional parameters to the launch file
+
+vggt:
+  encoder:
+    image_qos:
+      history: "keep_last"
+      depth: 5  # Reduced queue depth for lower latency
+      reliability: "reliable"  # Use reliable transport
+      durability: "transient_local"  # Keep messages for late-joining subscribers
