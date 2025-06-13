@@ -63,13 +63,18 @@ VggtEncoderNode::VggtEncoderNode(const rclcpp::NodeOptions& options)
     feature_pub_ = this->create_publisher<neuromesh_interfaces::msg::Feature>(
         feature_topic, rclcpp::QoS(10).reliability(rclcpp::ReliabilityPolicy::Reliable));
     
+    // Create resized RGB image publisher
+    std::string resized_rgb_topic = "/" + robot_name_ + "/resized_rgb";
+    resized_rgb_pub_ = this->create_publisher<sensor_msgs::msg::Image>(
+        resized_rgb_topic, rclcpp::QoS(10).reliability(rclcpp::ReliabilityPolicy::Reliable));
+    
     // Create timer for encoder processing
     encoder_timer_ = this->create_wall_timer(
         std::chrono::duration<double>(encoder_cycle_interval_),
         std::bind(&VggtEncoderNode::encoder_timer_callback, this));
     
-    RCLCPP_INFO(this->get_logger(), "VggtEncoderNode setup complete. Publishing features to: %s", 
-                feature_topic.c_str());
+    RCLCPP_INFO(this->get_logger(), "VggtEncoderNode setup complete. Publishing features to: %s, resized RGB to: %s", 
+                feature_topic.c_str(), resized_rgb_topic.c_str());
 }
 
 void VggtEncoderNode::camera_callback(const sensor_msgs::msg::Image::SharedPtr msg) {
@@ -145,7 +150,12 @@ void VggtEncoderNode::process_image() {
         }
         
         // Preprocess image
-        auto preprocessed = preprocess_image(cv_ptr->image);
+        cv::Mat resized_rgb;
+        auto preprocessed = preprocess_image(cv_ptr->image, resized_rgb);
+        
+        // Store resized RGB image and timestamp for synchronized publishing
+        pending_resized_rgb_ = resized_rgb.clone();
+        pending_timestamp_ = image->header.stamp;
         
         // Create tensor for encoder input
         neuromesh_interfaces::msg::Tensor input_tensor;
@@ -174,14 +184,13 @@ void VggtEncoderNode::process_image() {
     }
 }
 
-std::vector<float> VggtEncoderNode::preprocess_image(const cv::Mat& image) {
+std::vector<float> VggtEncoderNode::preprocess_image(const cv::Mat& image, cv::Mat& resized_rgb) {
     // Resize image to encoder input size
-    cv::Mat resized;
-    cv::resize(image, resized, cv::Size(image_width_, image_height_), 0, 0, cv::INTER_LINEAR);
+    cv::resize(image, resized_rgb, cv::Size(image_width_, image_height_), 0, 0, cv::INTER_LINEAR);
     
     // Convert to float and normalize to [0, 1]
     cv::Mat normalized;
-    resized.convertTo(normalized, CV_32FC3, 1.0/255.0, 0.0);
+    resized_rgb.convertTo(normalized, CV_32FC3, 1.0/255.0, 0.0);
 
     // Convert HWC to CHW format
     std::vector<float> preprocessed(3 * image_height_ * image_width_);
@@ -248,9 +257,28 @@ VggtEncoderNode::perform_inference(const std::vector<neuromesh_interfaces::msg::
 
 void VggtEncoderNode::publish_features(const neuromesh_interfaces::msg::Tensor& tensor) {
     auto feature_msg = build_feature_message(tensor);
+    
+    // Use the same timestamp for both feature and RGB image
+    rclcpp::Time sync_timestamp = feature_msg.timestamp;
+    
+    // Publish features
     feature_pub_->publish(feature_msg);
     
-    RCLCPP_INFO(this->get_logger(), "Published features for robot: %s, tensor shape: [%s], size: %zu bytes",
+    // Publish resized RGB image with the same timestamp
+    if (!pending_resized_rgb_.empty()) {
+        sensor_msgs::msg::Image resized_msg;
+        resized_msg.header.stamp = sync_timestamp;
+        resized_msg.header.frame_id = robot_name_ + "_camera";
+        resized_msg.width = pending_resized_rgb_.cols;
+        resized_msg.height = pending_resized_rgb_.rows;
+        resized_msg.encoding = sensor_msgs::image_encodings::RGB8;
+        resized_msg.step = pending_resized_rgb_.cols * pending_resized_rgb_.channels();
+        resized_msg.data.resize(resized_msg.step * resized_msg.height);
+        std::memcpy(resized_msg.data.data(), pending_resized_rgb_.data, resized_msg.data.size());
+        resized_rgb_pub_->publish(resized_msg);
+    }
+    
+    RCLCPP_INFO(this->get_logger(), "Published features and RGB for robot: %s, tensor shape: [%s], size: %zu bytes",
                 robot_name_.c_str(),
                 tensor.shape.dims.empty() ? "empty" : 
                 std::accumulate(tensor.shape.dims.begin(), tensor.shape.dims.end(), std::string(),

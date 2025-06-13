@@ -17,6 +17,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <deque>
 
 namespace neuromesh {
 
@@ -28,6 +29,7 @@ public:
 private:
     // Callbacks
     void feature_callback(const neuromesh_interfaces::msg::Feature::SharedPtr msg);
+    void rgb_image_callback(const sensor_msgs::msg::Image::SharedPtr msg);
     void decoder_timer_callback();
     
     // Processing functions
@@ -35,6 +37,7 @@ private:
     bool check_feature_freshness(const std::string& robot_name, double& age_seconds);
     void process_decoder_output(const std::vector<std::shared_ptr<neuromesh_interfaces::msg::Tensor>>& outputs);
     bool build_decoder_tensor(neuromesh_interfaces::msg::Tensor& output_tensor);
+    bool find_closest_rgb_image(const rclcpp::Time& target_time, cv::Mat& rgb_image);
     
     // Output generation
     sensor_msgs::msg::Image create_depth_image(const float* depth_data, 
@@ -56,6 +59,7 @@ private:
     
     // Subscriptions
     std::map<std::string, rclcpp::Subscription<neuromesh_interfaces::msg::Feature>::SharedPtr> feature_subs_;
+    rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr rgb_image_sub_;
     
     // Publishers
     std::map<std::string, rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr> depth_pubs_;
@@ -71,8 +75,13 @@ private:
     std::mutex feature_mutex_;
     
     // RGB image buffer for point cloud coloring
-    std::map<std::string, cv::Mat> rgb_image_buffer_;
+    struct RgbImageData {
+        cv::Mat image;
+        rclcpp::Time timestamp;
+    };
+    std::deque<RgbImageData> rgb_image_buffer_;
     std::mutex rgb_mutex_;
+    static constexpr size_t MAX_RGB_BUFFER_SIZE = 5;
     
     // Configuration parameters
     std::string robot_name_;

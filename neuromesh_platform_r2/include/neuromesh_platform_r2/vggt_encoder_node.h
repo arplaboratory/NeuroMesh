@@ -26,7 +26,7 @@ private:
     void encoder_timer_callback();
     
     // Processing functions
-    std::vector<float> preprocess_image(const cv::Mat& image);
+    std::vector<float> preprocess_image(const cv::Mat& image, cv::Mat& resized_rgb);
     void process_image();
     void publish_features(const neuromesh_interfaces::msg::Tensor& tensor);
     neuromesh_interfaces::msg::Feature build_feature_message(const neuromesh_interfaces::msg::Tensor& tensor);
@@ -43,6 +43,7 @@ private:
     
     // Publishers
     rclcpp::Publisher<neuromesh_interfaces::msg::Feature>::SharedPtr feature_pub_;
+    rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr resized_rgb_pub_;
     
     // TensorRT client
     rclcpp::Client<neuromesh_interfaces::srv::TensorRequest>::SharedPtr tensorrt_client_;
@@ -65,6 +66,10 @@ private:
     std::mutex image_mutex_;
     std::atomic<bool> processing_in_progress_;
     std::future<std::vector<std::shared_ptr<neuromesh_interfaces::msg::Tensor>>> encoder_result_;
+    
+    // Store resized RGB image and timestamp for synchronized publishing
+    cv::Mat pending_resized_rgb_;
+    rclcpp::Time pending_timestamp_;
     
     // Timing utilities
     std::map<std::string, std::chrono::high_resolution_clock::time_point> clock_map_;
