@@ -60,8 +60,8 @@ VggtDecoderNode::VggtDecoderNode(const rclcpp::NodeOptions& options)
                         return a.empty() ? b : a + ", " + b;
                     }).c_str());
     
-    // Create TensorRT client
-    tensorrt_client_ = this->create_client<neuromesh_interfaces::srv::TensorRequest>("tensorrt_request");
+    // Create TensorRT client for decoder
+    tensorrt_client_ = this->create_client<neuromesh_interfaces::srv::TensorRequest>("tensorrt_request_decoder");
     
     // Wait for TensorRT service
     while (!tensorrt_client_->wait_for_service(std::chrono::seconds(1))) {

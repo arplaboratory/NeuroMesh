@@ -125,8 +125,9 @@ ament_target_dependencies(vggt_separated
  )
 
 target_link_libraries(vggt_separated ${YAML_CPP_LIBRARIES} ${PCL_LIBRARIES})
-rclcpp_components_register_nodes(vggt_separated "neuromesh::VggtEncoderNode")
-rclcpp_components_register_nodes(vggt_separated "neuromesh::VggtDecoderNode")
+rclcpp_components_register_nodes(vggt_separated 
+  "neuromesh::VggtEncoderNode"
+  "neuromesh::VggtDecoderNode")
 
 #Control Codes
 add_library(control_implementation SHARED
@@ -242,4 +243,5 @@ install(PROGRAMS
     DESTINATION share/${PROJECT_NAME})
 
 ament_export_dependencies(rosidl_default_runtime)
+ament_export_libraries(vggt_separated dust3r_example vggt_example odom_republisher)
 ament_package()
