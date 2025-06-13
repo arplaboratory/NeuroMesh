@@ -61,7 +61,7 @@ VggtDecoderNode::VggtDecoderNode(const rclcpp::NodeOptions& options)
                     }).c_str());
     
     // Create TensorRT client
-    tensorrt_client_ = this->create_client<neuromesh_interfaces::srv::TensorrtRequest>("tensorrt_request");
+    tensorrt_client_ = this->create_client<neuromesh_interfaces::srv::TensorRequest>("tensorrt_request");
     
     // Wait for TensorRT service
     while (!tensorrt_client_->wait_for_service(std::chrono::seconds(1))) {
@@ -264,9 +264,9 @@ bool VggtDecoderNode::check_feature_freshness(const std::string& robot_name, dou
 std::future<std::vector<std::shared_ptr<neuromesh_interfaces::msg::Tensor>>> 
 VggtDecoderNode::perform_inference(const std::vector<neuromesh_interfaces::msg::Tensor>& inputs) {
     
-    auto request = std::make_shared<neuromesh_interfaces::srv::TensorrtRequest::Request>();
+    auto request = std::make_shared<neuromesh_interfaces::srv::TensorRequest::Request>();
     request->model_name = decoder_model_name_;
-    request->tensors = inputs;
+    request->tensor1 = inputs;
     
     // Create promise and future
     auto promise = std::make_shared<std::promise<std::vector<std::shared_ptr<neuromesh_interfaces::msg::Tensor>>>>();
@@ -276,7 +276,7 @@ VggtDecoderNode::perform_inference(const std::vector<neuromesh_interfaces::msg::
     auto response_future = tensorrt_client_->async_send_request(request);
     
     // Handle response in a separate thread to avoid blocking
-    std::thread([this, response_future, promise]() {
+    std::thread([this, promise](auto response_future) {
         try {
             // Wait for response with timeout
             auto status = response_future.wait_for(std::chrono::duration<double>(tensorrt_timeout_));
@@ -284,15 +284,14 @@ VggtDecoderNode::perform_inference(const std::vector<neuromesh_interfaces::msg::
             if (status == std::future_status::ready) {
                 auto response = response_future.get();
                 
-                if (response && response->result == 0) {
+                if (response) {
                     std::vector<std::shared_ptr<neuromesh_interfaces::msg::Tensor>> result;
-                    for (const auto& tensor : response->tensors) {
+                    for (const auto& tensor : response->tensor2) {
                         result.push_back(std::make_shared<neuromesh_interfaces::msg::Tensor>(tensor));
                     }
                     promise->set_value(result);
                 } else {
-                    RCLCPP_ERROR(this->get_logger(), "TensorRT inference failed with result: %d", 
-                                response ? response->result : -1);
+                    RCLCPP_ERROR(this->get_logger(), "TensorRT inference failed - null response");
                     promise->set_value({});
                 }
             } else {
@@ -305,7 +304,7 @@ VggtDecoderNode::perform_inference(const std::vector<neuromesh_interfaces::msg::
         }
         
         processing_in_progress_ = false;
-    }).detach();
+    }, std::move(response_future)).detach();
     
     return future;
 }
