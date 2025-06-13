@@ -5,7 +5,7 @@
 #include <sensor_msgs/msg/image.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <neuromesh_interfaces/msg/feature.hpp>
-#include <neuromesh_interfaces/srv/tensorrt_request.hpp>
+#include <neuromesh_interfaces/srv/tensor_request.hpp>
 #include <cv_bridge/cv_bridge.h>
 #include <opencv2/opencv.hpp>
 #include <pcl_conversions/pcl_conversions.h>
@@ -63,7 +63,7 @@ private:
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr rgb_pointcloud_pub_;
     
     // TensorRT client
-    rclcpp::Client<neuromesh_interfaces::srv::TensorrtRequest>::SharedPtr tensorrt_client_;
+    rclcpp::Client<neuromesh_interfaces::srv::TensorRequest>::SharedPtr tensorrt_client_;
     
     // Feature buffer
     std::map<std::string, neuromesh_interfaces::msg::Feature::SharedPtr> feature_buffer_;
