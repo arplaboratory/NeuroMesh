@@ -1,14 +1,14 @@
 vggt:
   # Encoder settings
   encoder:
-    cycle_interval: 3.0  # seconds
+    cycle_interval: 2.0  # seconds
     image_width: 518
     image_height: 392
     model_path: "$(find neuromesh_platform_r2)/../../tensorrt_engine/models/vggt_onnx_2x/vggt_image_encoder_2x.engine"
     # Image subscription QoS settings
     image_qos:
       history: "keep_last"  # keep_last or keep_all
-      depth: 10
+      depth: 1
       reliability: "best_effort"  # reliable or best_effort
       durability: "volatile"  # volatile or transient_local
     
