@@ -15,6 +15,12 @@ VggtEncoderNode::VggtEncoderNode(const rclcpp::NodeOptions& options)
     this->declare_parameter<int>("vggt.encoder.image_height", 392);
     this->declare_parameter<double>("vggt.tensorrt.timeout", 30.0);
     
+    // Declare QoS parameters
+    this->declare_parameter<std::string>("vggt.encoder.image_qos.history", "keep_last");
+    this->declare_parameter<int>("vggt.encoder.image_qos.depth", 10);
+    this->declare_parameter<std::string>("vggt.encoder.image_qos.reliability", "best_effort");
+    this->declare_parameter<std::string>("vggt.encoder.image_qos.durability", "volatile");
+    
     // Get parameters
     robot_name_ = this->get_parameter("robot_name").as_string();
     color_raw_topic_ = this->get_parameter("color_raw_topic").as_string();
@@ -46,8 +52,8 @@ VggtEncoderNode::VggtEncoderNode(const rclcpp::NodeOptions& options)
         RCLCPP_INFO(this->get_logger(), "Waiting for TensorRT service...");
     }
     
-    // Create camera subscription
-    auto camera_qos = rclcpp::QoS(10).reliability(rclcpp::ReliabilityPolicy::BestEffort);
+    // Create camera subscription with configurable QoS
+    auto camera_qos = create_image_qos();
     camera_sub_ = this->create_subscription<sensor_msgs::msg::Image>(
         color_raw_topic_, camera_qos,
         std::bind(&VggtEncoderNode::camera_callback, this, std::placeholders::_1));
@@ -283,6 +289,43 @@ long VggtEncoderNode::check_clock(const std::string& name) {
         return std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
     }
     return -1;
+}
+
+rclcpp::QoS VggtEncoderNode::create_image_qos() {
+    // Get QoS parameters
+    std::string history = this->get_parameter("vggt.encoder.image_qos.history").as_string();
+    int depth = this->get_parameter("vggt.encoder.image_qos.depth").as_int();
+    std::string reliability = this->get_parameter("vggt.encoder.image_qos.reliability").as_string();
+    std::string durability = this->get_parameter("vggt.encoder.image_qos.durability").as_string();
+    
+    // Create QoS profile
+    rclcpp::QoS qos(depth);
+    
+    // Set history policy
+    if (history == "keep_all") {
+        qos.keep_all();
+    } else {
+        qos.keep_last(depth);
+    }
+    
+    // Set reliability policy
+    if (reliability == "reliable") {
+        qos.reliable();
+    } else {
+        qos.best_effort();
+    }
+    
+    // Set durability policy
+    if (durability == "transient_local") {
+        qos.transient_local();
+    } else {
+        qos.durability_volatile();
+    }
+    
+    RCLCPP_INFO(this->get_logger(), "Image QoS configured - History: %s, Depth: %d, Reliability: %s, Durability: %s",
+                history.c_str(), depth, reliability.c_str(), durability.c_str());
+    
+    return qos;
 }
 
 }  // namespace neuromesh
