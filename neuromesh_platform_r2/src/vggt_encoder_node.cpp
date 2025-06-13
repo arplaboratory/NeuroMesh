@@ -173,10 +173,10 @@ std::vector<float> VggtEncoderNode::preprocess_image(const cv::Mat& image) {
     cv::Mat resized;
     cv::resize(image, resized, cv::Size(image_width_, image_height_), 0, 0, cv::INTER_LINEAR);
     
-    // Convert to float and normalize to [-1, 1]
+    // Convert to float and normalize to [0, 1]
     cv::Mat normalized;
-    resized.convertTo(normalized, CV_32FC3, 2.0/255.0, -1.0);
-    
+    resized.convertTo(normalized, CV_32FC3, 1.0/255.0, 0.0);
+
     // Convert HWC to CHW format
     std::vector<float> preprocessed(3 * image_height_ * image_width_);
     std::vector<cv::Mat> channels(3);
