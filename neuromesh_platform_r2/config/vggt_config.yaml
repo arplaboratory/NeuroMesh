@@ -1,20 +1,20 @@
 vggt:
   # Encoder settings
   encoder:
-    cycle_interval: 3.0  # seconds
+    cycle_interval: 5.0  # seconds
     image_width: 518
     image_height: 392
     model_path: "$(find neuromesh_platform_r2)/../../tensorrt_engine/models/vggt_onnx_2x/vggt_image_encoder_2x.engine"
     # Image subscription QoS settings
     image_qos:
       history: "keep_last"  # keep_last or keep_all
-      depth: 10
+      depth: 1
       reliability: "best_effort"  # reliable or best_effort
       durability: "volatile"  # volatile or transient_local
     
   # Decoder settings
   decoder:
-    cycle_interval: 3.0  # seconds
+    cycle_interval: 5.0  # seconds
     feature_age_threshold: 10.0  # seconds
     num_robots: 2  # Configurable N
     model_path: "$(find neuromesh_platform_r2)/../../tensorrt_engine/models/vggt_onnx_2x/vggt_aggregator_2x.engine"
