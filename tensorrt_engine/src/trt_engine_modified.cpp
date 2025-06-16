@@ -1,6 +1,5 @@
 #include "tensorrt_engine/trt_engine_modified.h"
 
-#include <chrono>
 #include <cassert>
 #include <fstream>
 #include <iostream>
@@ -142,8 +141,6 @@ void TRTEngine::runInference(const std::vector<const void *> &inputTensors,
 
   cudaStream_t stream;
 
-  auto start = std::chrono::high_resolution_clock::now();
-
   cudaStreamCreate(&stream);
 
   // Copy input data to device
@@ -172,11 +169,6 @@ void TRTEngine::runInference(const std::vector<const void *> &inputTensors,
   }
 
   cudaStreamSynchronize(stream);
-
-  auto stop = std::chrono::high_resolution_clock::now();
-  auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
-  
-  std::cout << "====== Time taken: " << duration.count() << " ms" << std::endl;
 
   cudaStreamDestroy(stream);
 }
