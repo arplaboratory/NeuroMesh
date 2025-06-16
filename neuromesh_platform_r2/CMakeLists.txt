@@ -38,6 +38,8 @@ find_package(std_srvs REQUIRED)
 find_package(rclcpp_components REQUIRED)
 find_package(PCL REQUIRED)
 find_package(pcl_conversions REQUIRED)
+find_package(message_filters REQUIRED)
+find_package(realsense2_camera_msgs REQUIRED)
 
 include_directories(include)
 include_directories(
@@ -195,6 +197,28 @@ ament_target_dependencies(
 target_link_libraries(compression_node ZLIB::ZLIB)
 target_link_libraries(decompression_node ZLIB::ZLIB)
 
+# Depth completion node
+add_executable(depth_completion_node
+  src/depth_completion_node.cpp
+)
+
+target_include_directories(depth_completion_node PUBLIC "include/")
+
+ament_target_dependencies(depth_completion_node
+  "rclcpp"
+  "sensor_msgs"
+  "cv_bridge"
+  "PCL"
+  "pcl_conversions"
+  "message_filters"
+  "realsense2_camera_msgs"
+)
+
+target_link_libraries(depth_completion_node
+  ${OpenCV_LIBS}
+  ${PCL_LIBRARIES}
+)
+
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
@@ -221,7 +245,7 @@ install(TARGETS
 install(TARGETS
 	#neuromesh_node
 	#dust3r_exmaple
-	visualization_node decompression_node compression_node
+	visualization_node decompression_node compression_node depth_completion_node
 	#resizer_node qos_node
 	DESTINATION lib/${PROJECT_NAME})
 
@@ -230,6 +254,7 @@ install(FILES
   launch/dust3r_model_neuromesh_launch.py
   launch/vggt_model_neuromesh_launch.py
   launch/vggt_separated_launch.py
+  launch/depth_completion_launch.py
   DESTINATION share/${PROJECT_NAME}/launch
 )
 
