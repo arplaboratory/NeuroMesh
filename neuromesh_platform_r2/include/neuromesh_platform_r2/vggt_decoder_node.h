@@ -85,6 +85,7 @@ private:
     
     // Configuration parameters
     std::string robot_name_;
+    std::string frame_id_;
     double decoder_cycle_interval_;  // seconds
     double feature_age_threshold_;   // seconds (default: 10.0)
     std::vector<std::string> robot_names_;
