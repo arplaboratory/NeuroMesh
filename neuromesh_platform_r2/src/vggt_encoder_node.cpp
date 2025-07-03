@@ -103,12 +103,12 @@ VggtEncoderNode::VggtEncoderNode(const rclcpp::NodeOptions& options)
             depth_raw_topic_, depth_qos,
             std::bind(&VggtEncoderNode::depth_callback, this, std::placeholders::_1));
         
-        // Create synchronized depth publisher
-        std::string synchronized_depth_topic = "/" + robot_name_ + "/synchronized_depth";
+        // Create encoder sync depth publisher
+        std::string encoder_sync_depth_topic = "/" + robot_name_ + "/encoder_sync_depth";
         synchronized_depth_pub_ = this->create_publisher<sensor_msgs::msg::Image>(
-            synchronized_depth_topic, rclcpp::QoS(10).reliability(rclcpp::ReliabilityPolicy::Reliable));
+            encoder_sync_depth_topic, rclcpp::QoS(10).reliability(rclcpp::ReliabilityPolicy::Reliable));
         
-        RCLCPP_INFO(this->get_logger(), "Publishing synchronized depth to: %s", synchronized_depth_topic.c_str());
+        RCLCPP_INFO(this->get_logger(), "Publishing encoder sync depth to: %s", encoder_sync_depth_topic.c_str());
     }
     
     // Create timer for encoder processing
@@ -338,13 +338,13 @@ void VggtEncoderNode::publish_features(const neuromesh_interfaces::msg::Tensor& 
         resized_rgb_pub_->publish(resized_msg);
     }
     
-    // Publish synchronized depth image if enabled and available
+    // Publish encoder sync depth image if enabled and available
     if (depth_enabled_ && pending_depth_ && synchronized_depth_pub_) {
         auto depth_msg = *pending_depth_;  // Make a copy
         depth_msg.header.stamp = sync_timestamp;  // Use the same timestamp
         depth_msg.header.frame_id = frame_id_;  // Use the configured frame_id
         synchronized_depth_pub_->publish(depth_msg);
-        RCLCPP_DEBUG(this->get_logger(), "Published synchronized depth image with timestamp: %d.%d",
+        RCLCPP_DEBUG(this->get_logger(), "Published encoder sync depth image with timestamp: %d.%d",
                      depth_msg.header.stamp.sec, depth_msg.header.stamp.nanosec);
     }
     
