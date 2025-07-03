@@ -23,6 +23,7 @@ public:
 private:
     // Callbacks
     void camera_callback(const sensor_msgs::msg::Image::SharedPtr msg);
+    void depth_callback(const sensor_msgs::msg::Image::SharedPtr msg);
     void encoder_timer_callback();
     
     // Processing functions
@@ -33,6 +34,7 @@ private:
     
     // QoS configuration
     rclcpp::QoS create_image_qos();
+    rclcpp::QoS create_depth_qos();
     
     // Async inference
     std::future<std::vector<std::shared_ptr<neuromesh_interfaces::msg::Tensor>>> 
@@ -40,10 +42,12 @@ private:
     
     // Subscriptions
     rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr camera_sub_;
+    rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr depth_sub_;
     
     // Publishers
     rclcpp::Publisher<neuromesh_interfaces::msg::Feature>::SharedPtr feature_pub_;
     rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr resized_rgb_pub_;
+    rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr synchronized_depth_pub_;
     
     // TensorRT client
     rclcpp::Client<neuromesh_interfaces::srv::TensorRequest>::SharedPtr tensorrt_client_;
@@ -54,6 +58,8 @@ private:
     // Configuration parameters
     std::string robot_name_;
     std::string color_raw_topic_;
+    std::string depth_raw_topic_;
+    bool depth_enabled_;
     double encoder_cycle_interval_;  // seconds
     std::string encoder_model_path_;
     std::string encoder_model_name_;
@@ -63,12 +69,15 @@ private:
     
     // State management
     sensor_msgs::msg::Image::SharedPtr latest_image_;
+    sensor_msgs::msg::Image::SharedPtr latest_depth_;
     std::mutex image_mutex_;
+    std::mutex depth_mutex_;
     std::atomic<bool> processing_in_progress_;
     std::future<std::vector<std::shared_ptr<neuromesh_interfaces::msg::Tensor>>> encoder_result_;
     
-    // Store resized RGB image and timestamp for synchronized publishing
+    // Store resized RGB image, depth image and timestamp for synchronized publishing
     cv::Mat pending_resized_rgb_;
+    sensor_msgs::msg::Image::SharedPtr pending_depth_;
     rclcpp::Time pending_timestamp_;
     
     // Timing utilities
