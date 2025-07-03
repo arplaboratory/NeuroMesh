@@ -19,6 +19,9 @@ VggtEncoderNode::VggtEncoderNode(const rclcpp::NodeOptions& options)
     this->declare_parameter<bool>("depth_enabled", false);
     this->declare_parameter<std::string>("depth_raw_topic", "");
     
+    // Declare frame_id parameter
+    this->declare_parameter<std::string>("frame_id", "");
+    
     // Declare QoS parameters
     this->declare_parameter<std::string>("vggt.encoder.image_qos.history", "keep_last");
     this->declare_parameter<int>("vggt.encoder.image_qos.depth", 10);
@@ -44,6 +47,12 @@ VggtEncoderNode::VggtEncoderNode(const rclcpp::NodeOptions& options)
     depth_enabled_ = this->get_parameter("depth_enabled").as_bool();
     depth_raw_topic_ = this->get_parameter("depth_raw_topic").as_string();
     
+    // Get frame_id parameter (default to robot_name + "_camera" if not specified)
+    frame_id_ = this->get_parameter("frame_id").as_string();
+    if (frame_id_.empty()) {
+        frame_id_ = "/" + robot_name_ + "/vggt";
+    }
+    
     // Extract model name from path
     size_t last_slash = encoder_model_path_.find_last_of("/");
     encoder_model_name_ = (last_slash != std::string::npos) ? 
@@ -53,6 +62,7 @@ VggtEncoderNode::VggtEncoderNode(const rclcpp::NodeOptions& options)
     RCLCPP_INFO(this->get_logger(), "Encoder model: %s", encoder_model_name_.c_str());
     RCLCPP_INFO(this->get_logger(), "Encoder cycle interval: %.2f seconds", encoder_cycle_interval_);
     RCLCPP_INFO(this->get_logger(), "Image dimensions: %dx%d", image_width_, image_height_);
+    RCLCPP_INFO(this->get_logger(), "Frame ID: %s", frame_id_.c_str());
     if (depth_enabled_) {
         RCLCPP_INFO(this->get_logger(), "Depth capture enabled, subscribing to: %s", depth_raw_topic_.c_str());
     }
@@ -318,7 +328,7 @@ void VggtEncoderNode::publish_features(const neuromesh_interfaces::msg::Tensor& 
     if (!pending_resized_rgb_.empty()) {
         sensor_msgs::msg::Image resized_msg;
         resized_msg.header.stamp = sync_timestamp;
-        resized_msg.header.frame_id = robot_name_ + "_camera";
+        resized_msg.header.frame_id = frame_id_;
         resized_msg.width = pending_resized_rgb_.cols;
         resized_msg.height = pending_resized_rgb_.rows;
         resized_msg.encoding = sensor_msgs::image_encodings::RGB8;
@@ -332,6 +342,7 @@ void VggtEncoderNode::publish_features(const neuromesh_interfaces::msg::Tensor& 
     if (depth_enabled_ && pending_depth_ && synchronized_depth_pub_) {
         auto depth_msg = *pending_depth_;  // Make a copy
         depth_msg.header.stamp = sync_timestamp;  // Use the same timestamp
+        depth_msg.header.frame_id = frame_id_;  // Use the configured frame_id
         synchronized_depth_pub_->publish(depth_msg);
         RCLCPP_DEBUG(this->get_logger(), "Published synchronized depth image with timestamp: %d.%d",
                      depth_msg.header.stamp.sec, depth_msg.header.stamp.nanosec);
