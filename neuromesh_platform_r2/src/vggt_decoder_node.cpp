@@ -178,6 +178,17 @@ VggtDecoderNode::VggtDecoderNode(const rclcpp::NodeOptions &options)
                 std::placeholders::_1));
   RCLCPP_INFO(this->get_logger(), "Subscribed to RGB images from: %s",
               rgb_topic.c_str());
+  
+  // Create encoder sync depth subscription for the current robot
+  std::string encoder_sync_depth_topic = "/" + robot_name_ + "/encoder_sync_depth";
+  auto encoder_sync_depth_qos =
+      rclcpp::QoS(10).reliability(rclcpp::ReliabilityPolicy::Reliable);
+  encoder_sync_depth_sub_ = this->create_subscription<sensor_msgs::msg::Image>(
+      encoder_sync_depth_topic, encoder_sync_depth_qos,
+      std::bind(&VggtDecoderNode::encoder_sync_depth_callback, this,
+                std::placeholders::_1));
+  RCLCPP_INFO(this->get_logger(), "Subscribed to encoder sync depth from: %s",
+              encoder_sync_depth_topic.c_str());
 
   // Create output publishers
   for (int i = 0; i < num_robots_; ++i) {
@@ -200,6 +211,12 @@ VggtDecoderNode::VggtDecoderNode(const rclcpp::NodeOptions &options)
                                                             10);
   rgb_pointcloud_pub_ =
       this->create_publisher<sensor_msgs::msg::PointCloud2>(pc_rgb_topic, 10);
+  
+  // Create decoder sync depth publisher
+  std::string decoder_sync_depth_topic = "/" + robot_name_ + "/decoder_sync_depth";
+  decoder_sync_depth_pub_ =
+      this->create_publisher<sensor_msgs::msg::Image>(decoder_sync_depth_topic, 10);
+  RCLCPP_INFO(this->get_logger(), "Publishing decoder sync depth to: %s", decoder_sync_depth_topic.c_str());
 
   // Create timer for decoder processing
   decoder_timer_ = this->create_wall_timer(
@@ -251,6 +268,28 @@ void VggtDecoderNode::rgb_image_callback(
     RCLCPP_ERROR(this->get_logger(), "cv_bridge exception in RGB callback: %s",
                  e.what());
   }
+}
+
+void VggtDecoderNode::encoder_sync_depth_callback(
+    const sensor_msgs::msg::Image::SharedPtr msg) {
+  std::lock_guard<std::mutex> lock(encoder_sync_depth_mutex_);
+  
+  // Add to buffer
+  EncoderSyncDepthData depth_data;
+  depth_data.depth_image = msg;
+  depth_data.timestamp = rclcpp::Time(msg->header.stamp);
+  
+  encoder_sync_depth_buffer_.push_back(depth_data);
+  
+  // Keep only the last MAX_ENCODER_SYNC_DEPTH_BUFFER_SIZE images
+  while (encoder_sync_depth_buffer_.size() > MAX_ENCODER_SYNC_DEPTH_BUFFER_SIZE) {
+    encoder_sync_depth_buffer_.pop_front();
+  }
+  
+  RCLCPP_DEBUG(this->get_logger(), 
+               "Received encoder sync depth with timestamp: %d.%d, buffer size: %zu",
+               msg->header.stamp.sec, msg->header.stamp.nanosec,
+               encoder_sync_depth_buffer_.size());
 }
 
 void VggtDecoderNode::decoder_timer_callback() {
@@ -599,6 +638,24 @@ void VggtDecoderNode::process_decoder_output(
                       "No RGB image found within acceptable timestamp range, "
                       "skipping RGB point cloud");
         }
+        
+        // Find and publish decoder sync depth corresponding to the feature timestamp
+        sensor_msgs::msg::Image encoder_sync_depth;
+        if (find_closest_encoder_sync_depth(feature_timestamp, encoder_sync_depth)) {
+          // Create decoder sync depth message with same content as encoder sync depth
+          // but with updated timestamp to match the decoder output
+          auto decoder_sync_depth = encoder_sync_depth;
+          decoder_sync_depth.header.stamp = this->now();
+          decoder_sync_depth.header.frame_id = frame_id_;
+          decoder_sync_depth_pub_->publish(decoder_sync_depth);
+          RCLCPP_DEBUG(this->get_logger(),
+                       "Published decoder sync depth with timestamp: %d.%d",
+                       decoder_sync_depth.header.stamp.sec, decoder_sync_depth.header.stamp.nanosec);
+        } else {
+          RCLCPP_DEBUG(this->get_logger(),
+                       "No encoder sync depth found within acceptable timestamp range, "
+                       "skipping decoder sync depth");
+        }
       }
     }
   }
@@ -787,6 +844,46 @@ bool VggtDecoderNode::find_closest_rgb_image(const rclcpp::Time &target_time,
   rgb_image = rgb_image_buffer_[best_idx].image.clone();
   RCLCPP_DEBUG(this->get_logger(),
                "Found RGB image with time difference: %.3f seconds",
+               min_time_diff);
+
+  return true;
+}
+
+bool VggtDecoderNode::find_closest_encoder_sync_depth(const rclcpp::Time &target_time,
+                                                      sensor_msgs::msg::Image &depth_image) {
+  std::lock_guard<std::mutex> lock(encoder_sync_depth_mutex_);
+
+  if (encoder_sync_depth_buffer_.empty()) {
+    RCLCPP_DEBUG(this->get_logger(), "No encoder sync depth available in buffer");
+    return false;
+  }
+
+  // Find the encoder sync depth with the closest timestamp
+  double min_time_diff = std::numeric_limits<double>::max();
+  size_t best_idx = 0;
+
+  for (size_t i = 0; i < encoder_sync_depth_buffer_.size(); ++i) {
+    double time_diff = std::abs((encoder_sync_depth_buffer_[i].timestamp - target_time).seconds());
+    if (time_diff < min_time_diff) {
+      min_time_diff = time_diff;
+      best_idx = i;
+    }
+  }
+
+  // Maximum allowed time difference (0.5 seconds)
+  const double MAX_TIME_DIFF = 0.5;
+
+  if (min_time_diff > MAX_TIME_DIFF) {
+    RCLCPP_DEBUG(this->get_logger(),
+                 "No encoder sync depth found within %.2f seconds of target time. "
+                 "Closest was %.3f seconds away.",
+                 MAX_TIME_DIFF, min_time_diff);
+    return false;
+  }
+
+  depth_image = *encoder_sync_depth_buffer_[best_idx].depth_image;
+  RCLCPP_DEBUG(this->get_logger(),
+               "Found encoder sync depth with time difference: %.3f seconds",
                min_time_diff);
 
   return true;

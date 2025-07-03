@@ -170,7 +170,7 @@ def generate_launch_description():
     depth_enabled_arg = DeclareLaunchArgument(
         name='depth_enabled',
         default_value='false',
-        description='Enable depth image capture and synchronization'
+        description='Enable encoder_sync_depth publishing from encoder and decoder_sync_depth from decoder'
     )
     
     depth_raw_topic_arg = DeclareLaunchArgument(
