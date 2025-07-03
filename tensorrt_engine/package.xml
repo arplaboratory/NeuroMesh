@@ -11,6 +11,7 @@
 
   <!--build_depend>neuromesh_platform_r2</build_depend-->
   <!--exec_depend>neuromesh_platform_r2</exec_depend-->
+  <depend>neuromesh_interfaces</depend>
   <build_depend>rclcpp_components</build_depend>
   <exec_depend>rclcpp_components</exec_depend>
   <build_depend>tensorrt</build_depend>
