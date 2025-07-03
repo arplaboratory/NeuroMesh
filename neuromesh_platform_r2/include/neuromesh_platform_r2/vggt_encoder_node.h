@@ -59,6 +59,7 @@ private:
     std::string robot_name_;
     std::string color_raw_topic_;
     std::string depth_raw_topic_;
+    std::string frame_id_;
     bool depth_enabled_;
     double encoder_cycle_interval_;  // seconds
     std::string encoder_model_path_;

@@ -74,6 +74,9 @@ VggtDecoderNode::VggtDecoderNode(const rclcpp::NodeOptions &options)
   this->declare_parameter<double>("vggt.tensorrt.timeout", 30.0);
   this->declare_parameter<int>("vggt.encoder.image_width", 518);
   this->declare_parameter<int>("vggt.encoder.image_height", 392);
+  
+  // Declare frame_id parameter
+  this->declare_parameter<std::string>("frame_id", "");
 
   // Get parameters
   robot_name_ = this->get_parameter("robot_name").as_string();
@@ -88,6 +91,12 @@ VggtDecoderNode::VggtDecoderNode(const rclcpp::NodeOptions &options)
   tensorrt_timeout_ = this->get_parameter("vggt.tensorrt.timeout").as_double();
   image_width_ = this->get_parameter("vggt.encoder.image_width").as_int();
   image_height_ = this->get_parameter("vggt.encoder.image_height").as_int();
+  
+  // Get frame_id parameter (default to robot_name + "_base_link" if not specified)
+  frame_id_ = this->get_parameter("frame_id").as_string();
+  if (frame_id_.empty()) {
+    frame_id_ = "/" + robot_name_ + "/vggt";
+  }
 
   // Set depth dimensions (same as image for VGGT)
   depth_width_ = image_width_;
@@ -119,6 +128,7 @@ VggtDecoderNode::VggtDecoderNode(const rclcpp::NodeOptions &options)
   RCLCPP_INFO(this->get_logger(), "Feature age threshold: %.2f seconds",
               feature_age_threshold_);
   RCLCPP_INFO(this->get_logger(), "Number of robots: %d", num_robots_);
+  RCLCPP_INFO(this->get_logger(), "Frame ID: %s", frame_id_.c_str());
   RCLCPP_INFO(this->get_logger(), "Robot names: %s",
               std::accumulate(robot_names_.begin(), robot_names_.end(),
                               std::string(),
@@ -526,7 +536,7 @@ void VggtDecoderNode::process_decoder_output(
       auto depth_image = create_depth_image(robot_depth, robot_depth_conf,
                                             depth_width_, depth_height_);
       depth_image.header.stamp = this->now();
-      depth_image.header.frame_id = robot_name_ + "_camera_frame";
+      depth_image.header.frame_id = frame_id_;
 
       std::string robot_key = "robot" + std::to_string(robot_idx + 1);
       if (depth_pubs_.find(robot_key) != depth_pubs_.end()) {
@@ -543,10 +553,9 @@ void VggtDecoderNode::process_decoder_output(
           world_points_conf_data + robot_idx * pixel_count;
 
       // Create and publish point cloud
-      std::string frame_id = robot_name_ + "_base_link";
       auto pointcloud =
           create_point_cloud(robot_points, robot_points_conf, depth_width_,
-                             depth_height_, frame_id);
+                             depth_height_, frame_id_);
 
       // Apply subsampling before publishing
       auto subsampled_pointcloud =
@@ -579,7 +588,7 @@ void VggtDecoderNode::process_decoder_output(
         if (find_closest_rgb_image(feature_timestamp, rgb_image)) {
           auto rgb_pointcloud =
               create_rgb_point_cloud(robot_points, robot_points_conf, rgb_image,
-                                     depth_width_, depth_height_, frame_id);
+                                     depth_width_, depth_height_, frame_id_);
           auto subsampled_rgb_pointcloud =
               subsample_rgb_pointcloud(rgb_pointcloud, voxel_leaf_size_);
           rgb_pointcloud_pub_->publish(subsampled_rgb_pointcloud);

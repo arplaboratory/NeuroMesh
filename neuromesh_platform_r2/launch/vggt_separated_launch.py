@@ -17,6 +17,9 @@ def launch_setup(context):
     depth_enabled = LaunchConfiguration('depth_enabled').perform(context)
     depth_raw_topic = LaunchConfiguration('depth_raw_topic').perform(context)
     
+    # Frame ID parameter
+    frame_id = LaunchConfiguration('frame_id').perform(context)
+    
     # Path to config file
     config_file = os.path.join(
         get_package_share_directory('neuromesh_platform_r2'),
@@ -87,6 +90,7 @@ def launch_setup(context):
                     'color_raw_topic': color_raw_topic,
                     'depth_enabled': depth_enabled == 'true' or depth_enabled == 'True',
                     'depth_raw_topic': depth_raw_topic,
+                    'frame_id': frame_id,
                     'vggt.encoder.model_path': os.path.join(
                         get_package_share_directory('tensorrt_engine'),
                         'models/vggt_onnx_2x/vggt_image_encoder_2x.engine'
@@ -105,6 +109,7 @@ def launch_setup(context):
                 config_file,
                 {
                     'robot_name': name,
+                    'frame_id': frame_id,
                     'vggt.robot_names': agent_list.split(','),
                     'vggt.decoder.model_path': os.path.join(
                         get_package_share_directory('tensorrt_engine'),
@@ -178,6 +183,12 @@ def generate_launch_description():
         description='Depth topic to subscribe to (only used if depth_enabled is true)',
     )
     
+    frame_id_arg = DeclareLaunchArgument(
+        name='frame_id',
+        default_value='',
+        description='Frame ID for published images (defaults to /robot_name/vggt)'
+    )
+    
     opaque_function_action = OpaqueFunction(function=launch_setup)
     
     return LaunchDescription([
@@ -188,5 +199,6 @@ def generate_launch_description():
         log_level_arg,
         depth_enabled_arg,
         depth_raw_topic_arg,
+        frame_id_arg,
         opaque_function_action,
     ])
