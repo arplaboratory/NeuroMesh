@@ -27,6 +27,16 @@ def generate_launch_description():
             description='RGB pointcloud from VGGT decoder (relative to robot_name)'
         ),
         DeclareLaunchArgument(
+            'pointcloud_current_topic',
+            default_value='/pointcloud_current',
+            description='Subsampled pointcloud from VGGT decoder (relative to robot_name)'
+        ),
+        DeclareLaunchArgument(
+            'pointcloud_neighbor_topic',
+            default_value='/pointcloud_neighbor',
+            description='Neighbor robot pointcloud (relative to robot_name)'
+        ),
+        DeclareLaunchArgument(
             'camera_info_topic',
             default_value='/camera_info',
             description='Camera info topic for depth image intrinsics (relative to robot_name)'
@@ -71,6 +81,16 @@ def generate_launch_description():
             default_value='0.1',
             description='Maximum time difference for message synchronization (seconds)'
         ),
+        DeclareLaunchArgument(
+            'voxel_leaf_size',
+            default_value='0.02',
+            description='Voxel leaf size for pointcloud subsampling (meters)'
+        ),
+        DeclareLaunchArgument(
+            'enable_subsampling',
+            default_value='false',
+            description='Enable voxel grid subsampling of output pointclouds'
+        ),
         
         # Depth completion node
         Node(
@@ -83,6 +103,8 @@ def generate_launch_description():
                 'depth_robot1_topic': LaunchConfiguration('depth_robot1_topic'),
                 'decoder_sync_depth_topic': LaunchConfiguration('decoder_sync_depth_topic'),
                 'pointcloud_rgb_topic': LaunchConfiguration('pointcloud_rgb_topic'),
+                'pointcloud_current_topic': LaunchConfiguration('pointcloud_current_topic'),
+                'pointcloud_neighbor_topic': LaunchConfiguration('pointcloud_neighbor_topic'),
                 'camera_info_topic': LaunchConfiguration('camera_info_topic'),
                 'output_pointcloud_topic': LaunchConfiguration('output_pointcloud_topic'),
                 'depth_epsilon': 0.001,
@@ -92,6 +114,8 @@ def generate_launch_description():
                 'max_shift': LaunchConfiguration('max_shift'),
                 'min_valid_points': LaunchConfiguration('min_valid_points'),
                 'max_time_diff': LaunchConfiguration('max_time_diff'),
+                'voxel_leaf_size': LaunchConfiguration('voxel_leaf_size'),
+                'enable_subsampling': LaunchConfiguration('enable_subsampling'),
             }],
             arguments=['--ros-args', '--log-level', LaunchConfiguration('log_level')],
         ),
