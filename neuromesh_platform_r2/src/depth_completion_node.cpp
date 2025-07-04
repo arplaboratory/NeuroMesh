@@ -13,10 +13,13 @@
   3. {robot_name}/pointcloud_rgb (sensor_msgs/PointCloud2)
     - RGB pointcloud from VGGT decoder (current robot)
     - Contains XYZ coordinates and RGB color
-  4. {robot_name}/pointcloud_neighbor (sensor_msgs/PointCloud2)
+  4. {robot_name}/pointcloud_current (sensor_msgs/PointCloud2)
+    - Subsampled pointcloud from VGGT decoder (current robot)
+    - Contains only XYZ coordinates (no color)
+  5. {robot_name}/pointcloud_neighbor (sensor_msgs/PointCloud2)
     - Pointcloud from neighbor robot (no color)
     - Contains only XYZ coordinates
-  5. {robot_name}/camera_info (sensor_msgs/CameraInfo)
+  6. {robot_name}/camera_info (sensor_msgs/CameraInfo)
     - Camera intrinsics for the depth sensor
     - Used to convert depth images to pointclouds
 
@@ -27,13 +30,16 @@
   1. {robot_name}/pointcloud_current_rgb_scaled (sensor_msgs/PointCloud2)
     - Main output: Scaled RGB pointcloud with metric scale
     - Same structure as input but with corrected scale
-  2. {robot_name}/pointcloud_neighbor_scaled (sensor_msgs/PointCloud2)
+  2. {robot_name}/pointcloud_current_scaled (sensor_msgs/PointCloud2)
+    - Scaled subsampled pointcloud with metric scale
+    - No color information
+  3. {robot_name}/pointcloud_neighbor_scaled (sensor_msgs/PointCloud2)
     - Scaled neighbor pointcloud with metric scale
     - No color information
 
   Processing Pipeline
 
-  1. Synchronization: Wait for all 4 input messages with matching timestamps
+  1. Synchronization: Wait for all 5 input messages with matching timestamps
   2. Scale Recovery:
     - Resize decoder_sync_depth to match depth_robot1 resolution if needed
     - Compute scale ratios for each valid pixel pair
@@ -41,8 +47,9 @@
     - Refine scale estimate using median of peak values
   3. Apply Scale:
     - Scale RGB pointcloud
+    - Scale current pointcloud (subsampled)
     - Scale neighbor pointcloud
-  4. Publish: Output scaled pointclouds
+  4. Publish: Output all scaled pointclouds
 
   The node essentially recovers the metric scale relationship between VGGT's normalized output and real-world measurements, then applies this scale to make all outputs metrically accurate.
 */
@@ -56,6 +63,7 @@
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
+#include <pcl/filters/voxel_grid.h>
 #include <message_filters/subscriber.h>
 #include <message_filters/synchronizer.h>
 #include <message_filters/sync_policies/approximate_time.h>
@@ -68,6 +76,7 @@ public:
         this->declare_parameter<std::string>("depth_robot1_topic", "/depth_robot1");
         this->declare_parameter<std::string>("decoder_sync_depth_topic", "/decoder_sync_depth");
         this->declare_parameter<std::string>("pointcloud_rgb_topic", "/pointcloud_rgb");
+        this->declare_parameter<std::string>("pointcloud_current_topic", "/pointcloud_current");
         this->declare_parameter<std::string>("pointcloud_neighbor_topic", "/pointcloud_neighbor");
         this->declare_parameter<std::string>("output_pointcloud_topic", "/pointcloud_current_rgb_scaled");
         this->declare_parameter<std::string>("camera_info_topic", "/camera_info");
@@ -78,12 +87,17 @@ public:
         this->declare_parameter<double>("max_shift", 5.0);
         this->declare_parameter<int>("min_valid_points", 100);
         this->declare_parameter<double>("max_time_diff", 0.1);
+        this->declare_parameter<double>("voxel_leaf_size", 0.02);
+        this->declare_parameter<bool>("enable_subsampling", false);
 
         // Get parameters
         robot_name_ = this->get_parameter("robot_name").as_string();
+        voxel_leaf_size_ = this->get_parameter("voxel_leaf_size").as_double();
+        enable_subsampling_ = this->get_parameter("enable_subsampling").as_bool();
         auto depth_robot1_topic = "/" + robot_name_ + this->get_parameter("depth_robot1_topic").as_string();
         auto decoder_sync_depth_topic = "/" + robot_name_ + this->get_parameter("decoder_sync_depth_topic").as_string();
         auto pointcloud_rgb_topic = "/" + robot_name_ + this->get_parameter("pointcloud_rgb_topic").as_string();
+        auto pointcloud_current_topic = "/" + robot_name_ + this->get_parameter("pointcloud_current_topic").as_string();
         auto pointcloud_neighbor_topic = "/" + robot_name_ + this->get_parameter("pointcloud_neighbor_topic").as_string();
         auto output_topic = "/" + robot_name_ + this->get_parameter("output_pointcloud_topic").as_string();
         auto camera_info_topic = "/" + robot_name_ + this->get_parameter("camera_info_topic").as_string();
@@ -95,17 +109,24 @@ public:
         // Publisher for scaled neighbor pointcloud
         scaled_pointcloud_neighbor_pub_ = this->create_publisher<sensor_msgs::msg::PointCloud2>(
             "/" + robot_name_ + "/pointcloud_neighbor_scaled", 10);
+        
+        // Publisher for scaled current pointcloud (subsampled, no color)
+        scaled_pointcloud_current_pub_ = this->create_publisher<sensor_msgs::msg::PointCloud2>(
+            "/" + robot_name_ + "/pointcloud_current_scaled", 10);
 
         // Subscribers using message filters for synchronization
         depth_robot1_sub_.subscribe(this, depth_robot1_topic);
         decoder_sync_depth_sub_.subscribe(this, decoder_sync_depth_topic);
         pointcloud_rgb_sub_.subscribe(this, pointcloud_rgb_topic);
+        pointcloud_current_sub_.subscribe(this, pointcloud_current_topic);
         pointcloud_neighbor_sub_.subscribe(this, pointcloud_neighbor_topic);
 
-        // Synchronizer for all four topics
-        sync_ = std::make_shared<Synchronizer>(SyncPolicy(10), depth_robot1_sub_, decoder_sync_depth_sub_, pointcloud_rgb_sub_, pointcloud_neighbor_sub_);
+        // Synchronizer for all five topics
+        sync_ = std::make_shared<Synchronizer>(SyncPolicy(10), depth_robot1_sub_, decoder_sync_depth_sub_, 
+            pointcloud_rgb_sub_, pointcloud_current_sub_, pointcloud_neighbor_sub_);
         sync_->registerCallback(std::bind(&DepthCompletionNode::syncCallback, this,
-            std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
+            std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, 
+            std::placeholders::_4, std::placeholders::_5));
 
         // Subscribe to camera info topic
         camera_info_sub_ = this->create_subscription<sensor_msgs::msg::CameraInfo>(
@@ -117,24 +138,30 @@ public:
         RCLCPP_INFO(this->get_logger(), "  - %s", depth_robot1_topic.c_str());
         RCLCPP_INFO(this->get_logger(), "  - %s", decoder_sync_depth_topic.c_str());
         RCLCPP_INFO(this->get_logger(), "  - %s", pointcloud_rgb_topic.c_str());
+        RCLCPP_INFO(this->get_logger(), "  - %s", pointcloud_current_topic.c_str());
         RCLCPP_INFO(this->get_logger(), "  - %s", pointcloud_neighbor_topic.c_str());
         RCLCPP_INFO(this->get_logger(), "  - %s", camera_info_topic.c_str());
         RCLCPP_INFO(this->get_logger(), "Publishing to: %s", output_topic.c_str());
+        RCLCPP_INFO(this->get_logger(), "Subsampling: %s (leaf size: %.3f m)", 
+                    enable_subsampling_ ? "enabled" : "disabled", voxel_leaf_size_);
     }
 
 private:
     using SyncPolicy = message_filters::sync_policies::ApproximateTime<
-        sensor_msgs::msg::Image, sensor_msgs::msg::Image, sensor_msgs::msg::PointCloud2, sensor_msgs::msg::PointCloud2>;
+        sensor_msgs::msg::Image, sensor_msgs::msg::Image, sensor_msgs::msg::PointCloud2, 
+        sensor_msgs::msg::PointCloud2, sensor_msgs::msg::PointCloud2>;
     using Synchronizer = message_filters::Synchronizer<SyncPolicy>;
 
     // Publishers
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr scaled_pointcloud_pub_;
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr scaled_pointcloud_neighbor_pub_;
+    rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr scaled_pointcloud_current_pub_;
 
     // Subscribers
     message_filters::Subscriber<sensor_msgs::msg::Image> depth_robot1_sub_;
     message_filters::Subscriber<sensor_msgs::msg::Image> decoder_sync_depth_sub_;
     message_filters::Subscriber<sensor_msgs::msg::PointCloud2> pointcloud_rgb_sub_;
+    message_filters::Subscriber<sensor_msgs::msg::PointCloud2> pointcloud_current_sub_;
     message_filters::Subscriber<sensor_msgs::msg::PointCloud2> pointcloud_neighbor_sub_;
     rclcpp::Subscription<sensor_msgs::msg::CameraInfo>::SharedPtr camera_info_sub_;
     
@@ -143,6 +170,10 @@ private:
 
     // Robot name
     std::string robot_name_;
+    
+    // Voxel leaf size for pointcloud subsampling
+    double voxel_leaf_size_;
+    bool enable_subsampling_;
 
     // Camera intrinsics
     bool camera_info_received_ = false;
@@ -157,6 +188,7 @@ private:
     void syncCallback(const sensor_msgs::msg::Image::ConstSharedPtr& depth_robot1_msg,
                       const sensor_msgs::msg::Image::ConstSharedPtr& decoder_sync_depth_msg,
                       const sensor_msgs::msg::PointCloud2::ConstSharedPtr& pointcloud_rgb_msg,
+                      const sensor_msgs::msg::PointCloud2::ConstSharedPtr& pointcloud_current_msg,
                       const sensor_msgs::msg::PointCloud2::ConstSharedPtr& pointcloud_neighbor_msg) {
         
         try {
@@ -176,13 +208,27 @@ private:
             
             // Apply scale to the RGB pointcloud
             auto scaled_rgb_pointcloud = scalePointcloud(pointcloud_rgb_msg, scale);
+            if (enable_subsampling_) {
+                scaled_rgb_pointcloud = subsamplePointcloudRGB(scaled_rgb_pointcloud);
+            }
             scaled_pointcloud_pub_->publish(*scaled_rgb_pointcloud);
+            
+            // Apply scale to the current pointcloud (subsampled, no color)
+            auto scaled_current_pointcloud = scalePointcloudNoColor(pointcloud_current_msg, scale);
+            if (enable_subsampling_) {
+                scaled_current_pointcloud = subsamplePointcloud(scaled_current_pointcloud);
+            }
+            scaled_pointcloud_current_pub_->publish(*scaled_current_pointcloud);
             
             // Apply scale to the neighbor pointcloud (no color)
             auto scaled_neighbor_pointcloud = scalePointcloudNoColor(pointcloud_neighbor_msg, scale);
+            if (enable_subsampling_) {
+                scaled_neighbor_pointcloud = subsamplePointcloud(scaled_neighbor_pointcloud);
+            }
             scaled_pointcloud_neighbor_pub_->publish(*scaled_neighbor_pointcloud);
 
-            RCLCPP_DEBUG(this->get_logger(), "Applied scale=%.3f to pointclouds", scale);
+            RCLCPP_DEBUG(this->get_logger(), "Applied scale=%.3f to all pointclouds%s", 
+                         scale, enable_subsampling_ ? " with subsampling" : "");
 
         } catch (cv_bridge::Exception& e) {
             RCLCPP_ERROR(this->get_logger(), "cv_bridge exception: %s", e.what());
@@ -384,6 +430,60 @@ private:
         output_msg->header = input_pc->header;
         
         RCLCPP_DEBUG(this->get_logger(), "Scaled neighbor pointcloud by factor %.3f", scale);
+        
+        return output_msg;
+    }
+    
+    sensor_msgs::msg::PointCloud2::SharedPtr subsamplePointcloud(
+        const sensor_msgs::msg::PointCloud2::SharedPtr& input_pc) {
+        
+        // Convert ROS pointcloud to PCL (no color)
+        pcl::PointCloud<pcl::PointXYZ>::Ptr input_cloud(new pcl::PointCloud<pcl::PointXYZ>);
+        pcl::fromROSMsg(*input_pc, *input_cloud);
+        
+        // Create voxel grid filter
+        pcl::VoxelGrid<pcl::PointXYZ> voxel_filter;
+        voxel_filter.setInputCloud(input_cloud);
+        voxel_filter.setLeafSize(voxel_leaf_size_, voxel_leaf_size_, voxel_leaf_size_);
+        
+        // Apply filter
+        pcl::PointCloud<pcl::PointXYZ>::Ptr filtered_cloud(new pcl::PointCloud<pcl::PointXYZ>);
+        voxel_filter.filter(*filtered_cloud);
+        
+        // Convert back to ROS message
+        auto output_msg = std::make_shared<sensor_msgs::msg::PointCloud2>();
+        pcl::toROSMsg(*filtered_cloud, *output_msg);
+        output_msg->header = input_pc->header;
+        
+        RCLCPP_DEBUG(this->get_logger(), "Subsampled pointcloud from %zu to %zu points (leaf size: %.3f)", 
+                     input_cloud->points.size(), filtered_cloud->points.size(), voxel_leaf_size_);
+        
+        return output_msg;
+    }
+    
+    sensor_msgs::msg::PointCloud2::SharedPtr subsamplePointcloudRGB(
+        const sensor_msgs::msg::PointCloud2::SharedPtr& input_pc) {
+        
+        // Convert ROS pointcloud to PCL with RGB
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr input_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+        pcl::fromROSMsg(*input_pc, *input_cloud);
+        
+        // Create voxel grid filter that preserves color
+        pcl::VoxelGrid<pcl::PointXYZRGB> voxel_filter;
+        voxel_filter.setInputCloud(input_cloud);
+        voxel_filter.setLeafSize(voxel_leaf_size_, voxel_leaf_size_, voxel_leaf_size_);
+        
+        // Apply filter
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr filtered_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+        voxel_filter.filter(*filtered_cloud);
+        
+        // Convert back to ROS message
+        auto output_msg = std::make_shared<sensor_msgs::msg::PointCloud2>();
+        pcl::toROSMsg(*filtered_cloud, *output_msg);
+        output_msg->header = input_pc->header;
+        
+        RCLCPP_DEBUG(this->get_logger(), "Subsampled RGB pointcloud from %zu to %zu points (leaf size: %.3f)", 
+                     input_cloud->points.size(), filtered_cloud->points.size(), voxel_leaf_size_);
         
         return output_msg;
     }
