@@ -107,6 +107,7 @@ private:
     double tensorrt_timeout_;  // seconds
     int image_width_;
     int image_height_;
+    float voxel_leaf_size_;  // meters
     
     // Output dimensions
     int depth_width_;
