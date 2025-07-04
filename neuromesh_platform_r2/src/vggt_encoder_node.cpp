@@ -15,11 +15,24 @@ VggtEncoderNode::VggtEncoderNode(const rclcpp::NodeOptions& options)
     this->declare_parameter<int>("vggt.encoder.image_height", 392);
     this->declare_parameter<double>("vggt.tensorrt.timeout", 30.0);
     
+    // Declare depth-related parameters
+    this->declare_parameter<bool>("depth_enabled", false);
+    this->declare_parameter<std::string>("depth_raw_topic", "");
+    
+    // Declare frame_id parameter
+    this->declare_parameter<std::string>("frame_id", "");
+    
     // Declare QoS parameters
     this->declare_parameter<std::string>("vggt.encoder.image_qos.history", "keep_last");
     this->declare_parameter<int>("vggt.encoder.image_qos.depth", 10);
     this->declare_parameter<std::string>("vggt.encoder.image_qos.reliability", "best_effort");
     this->declare_parameter<std::string>("vggt.encoder.image_qos.durability", "volatile");
+    
+    // Declare depth QoS parameters
+    this->declare_parameter<std::string>("vggt.encoder.depth_qos.history", "keep_last");
+    this->declare_parameter<int>("vggt.encoder.depth_qos.depth", 10);
+    this->declare_parameter<std::string>("vggt.encoder.depth_qos.reliability", "best_effort");
+    this->declare_parameter<std::string>("vggt.encoder.depth_qos.durability", "volatile");
     
     // Get parameters
     robot_name_ = this->get_parameter("robot_name").as_string();
@@ -30,6 +43,16 @@ VggtEncoderNode::VggtEncoderNode(const rclcpp::NodeOptions& options)
     image_height_ = this->get_parameter("vggt.encoder.image_height").as_int();
     tensorrt_timeout_ = this->get_parameter("vggt.tensorrt.timeout").as_double();
     
+    // Get depth-related parameters
+    depth_enabled_ = this->get_parameter("depth_enabled").as_bool();
+    depth_raw_topic_ = this->get_parameter("depth_raw_topic").as_string();
+    
+    // Get frame_id parameter (default to robot_name + "_camera" if not specified)
+    frame_id_ = this->get_parameter("frame_id").as_string();
+    if (frame_id_.empty()) {
+        frame_id_ = "/" + robot_name_ + "/vggt";
+    }
+    
     // Extract model name from path
     size_t last_slash = encoder_model_path_.find_last_of("/");
     encoder_model_name_ = (last_slash != std::string::npos) ? 
@@ -39,6 +62,10 @@ VggtEncoderNode::VggtEncoderNode(const rclcpp::NodeOptions& options)
     RCLCPP_INFO(this->get_logger(), "Encoder model: %s", encoder_model_name_.c_str());
     RCLCPP_INFO(this->get_logger(), "Encoder cycle interval: %.2f seconds", encoder_cycle_interval_);
     RCLCPP_INFO(this->get_logger(), "Image dimensions: %dx%d", image_width_, image_height_);
+    RCLCPP_INFO(this->get_logger(), "Frame ID: %s", frame_id_.c_str());
+    if (depth_enabled_) {
+        RCLCPP_INFO(this->get_logger(), "Depth capture enabled, subscribing to: %s", depth_raw_topic_.c_str());
+    }
     
     // Create TensorRT client for encoder
     tensorrt_client_ = this->create_client<neuromesh_interfaces::srv::TensorRequest>("tensorrt_request_encoder");
@@ -68,6 +95,22 @@ VggtEncoderNode::VggtEncoderNode(const rclcpp::NodeOptions& options)
     resized_rgb_pub_ = this->create_publisher<sensor_msgs::msg::Image>(
         resized_rgb_topic, rclcpp::QoS(10).reliability(rclcpp::ReliabilityPolicy::Reliable));
     
+    // Create depth subscription and publisher if enabled
+    if (depth_enabled_) {
+        // Create depth subscription with configurable QoS
+        auto depth_qos = create_depth_qos();
+        depth_sub_ = this->create_subscription<sensor_msgs::msg::Image>(
+            depth_raw_topic_, depth_qos,
+            std::bind(&VggtEncoderNode::depth_callback, this, std::placeholders::_1));
+        
+        // Create encoder sync depth publisher
+        std::string encoder_sync_depth_topic = "/" + robot_name_ + "/encoder_sync_depth";
+        synchronized_depth_pub_ = this->create_publisher<sensor_msgs::msg::Image>(
+            encoder_sync_depth_topic, rclcpp::QoS(10).reliability(rclcpp::ReliabilityPolicy::Reliable));
+        
+        RCLCPP_INFO(this->get_logger(), "Publishing encoder sync depth to: %s", encoder_sync_depth_topic.c_str());
+    }
+    
     // Create timer for encoder processing
     encoder_timer_ = this->create_wall_timer(
         std::chrono::duration<double>(encoder_cycle_interval_),
@@ -75,6 +118,13 @@ VggtEncoderNode::VggtEncoderNode(const rclcpp::NodeOptions& options)
     
     RCLCPP_INFO(this->get_logger(), "VggtEncoderNode setup complete. Publishing features to: %s, resized RGB to: %s", 
                 feature_topic.c_str(), resized_rgb_topic.c_str());
+}
+
+void VggtEncoderNode::depth_callback(const sensor_msgs::msg::Image::SharedPtr msg) {
+    std::lock_guard<std::mutex> lock(depth_mutex_);
+    latest_depth_ = msg;
+    RCLCPP_DEBUG(this->get_logger(), "Received depth image with timestamp: %d.%d", 
+                 msg->header.stamp.sec, msg->header.stamp.nanosec);
 }
 
 void VggtEncoderNode::camera_callback(const sensor_msgs::msg::Image::SharedPtr msg) {
@@ -137,6 +187,16 @@ void VggtEncoderNode::process_image() {
         if (!image) {
             processing_in_progress_ = false;
             return;
+        }
+        
+        // Get latest depth image if depth is enabled
+        if (depth_enabled_) {
+            std::lock_guard<std::mutex> lock(depth_mutex_);
+            pending_depth_ = latest_depth_;
+            if (pending_depth_) {
+                RCLCPP_DEBUG(this->get_logger(), "Captured depth image with timestamp: %d.%d", 
+                             pending_depth_->header.stamp.sec, pending_depth_->header.stamp.nanosec);
+            }
         }
         
         // Convert ROS image to OpenCV
@@ -268,7 +328,7 @@ void VggtEncoderNode::publish_features(const neuromesh_interfaces::msg::Tensor& 
     if (!pending_resized_rgb_.empty()) {
         sensor_msgs::msg::Image resized_msg;
         resized_msg.header.stamp = sync_timestamp;
-        resized_msg.header.frame_id = robot_name_ + "_camera";
+        resized_msg.header.frame_id = frame_id_;
         resized_msg.width = pending_resized_rgb_.cols;
         resized_msg.height = pending_resized_rgb_.rows;
         resized_msg.encoding = sensor_msgs::image_encodings::RGB8;
@@ -276,6 +336,16 @@ void VggtEncoderNode::publish_features(const neuromesh_interfaces::msg::Tensor& 
         resized_msg.data.resize(resized_msg.step * resized_msg.height);
         std::memcpy(resized_msg.data.data(), pending_resized_rgb_.data, resized_msg.data.size());
         resized_rgb_pub_->publish(resized_msg);
+    }
+    
+    // Publish encoder sync depth image if enabled and available
+    if (depth_enabled_ && pending_depth_ && synchronized_depth_pub_) {
+        auto depth_msg = *pending_depth_;  // Make a copy
+        depth_msg.header.stamp = sync_timestamp;  // Use the same timestamp
+        depth_msg.header.frame_id = frame_id_;  // Use the configured frame_id
+        synchronized_depth_pub_->publish(depth_msg);
+        RCLCPP_DEBUG(this->get_logger(), "Published encoder sync depth image with timestamp: %d.%d",
+                     depth_msg.header.stamp.sec, depth_msg.header.stamp.nanosec);
     }
     
     RCLCPP_INFO(this->get_logger(), "Published features and RGB for robot: %s, tensor shape: [%s], size: %zu bytes",
@@ -351,6 +421,43 @@ rclcpp::QoS VggtEncoderNode::create_image_qos() {
     }
     
     RCLCPP_INFO(this->get_logger(), "Image QoS configured - History: %s, Depth: %d, Reliability: %s, Durability: %s",
+                history.c_str(), depth, reliability.c_str(), durability.c_str());
+    
+    return qos;
+}
+
+rclcpp::QoS VggtEncoderNode::create_depth_qos() {
+    // Get QoS parameters
+    std::string history = this->get_parameter("vggt.encoder.depth_qos.history").as_string();
+    int depth = this->get_parameter("vggt.encoder.depth_qos.depth").as_int();
+    std::string reliability = this->get_parameter("vggt.encoder.depth_qos.reliability").as_string();
+    std::string durability = this->get_parameter("vggt.encoder.depth_qos.durability").as_string();
+    
+    // Create QoS profile
+    rclcpp::QoS qos(depth);
+    
+    // Set history policy
+    if (history == "keep_all") {
+        qos.keep_all();
+    } else {
+        qos.keep_last(depth);
+    }
+    
+    // Set reliability policy
+    if (reliability == "reliable") {
+        qos.reliable();
+    } else {
+        qos.best_effort();
+    }
+    
+    // Set durability policy
+    if (durability == "transient_local") {
+        qos.transient_local();
+    } else {
+        qos.durability_volatile();
+    }
+    
+    RCLCPP_INFO(this->get_logger(), "Depth QoS configured - History: %s, Depth: %d, Reliability: %s, Durability: %s",
                 history.c_str(), depth, reliability.c_str(), durability.c_str());
     
     return qos;
