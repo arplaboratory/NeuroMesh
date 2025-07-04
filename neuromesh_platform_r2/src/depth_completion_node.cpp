@@ -1,8 +1,56 @@
+/*
+  Current Input Topics
+
+  All topics are prefixed with /{robot_name}/:
+
+  1. {robot_name}/depth_robot1 (sensor_msgs/Image)
+    - Normalized depth from VGGT decoder (518x392 resolution)
+    - TYPE_32FC1 encoding
+  2. {robot_name}/decoder_sync_depth (sensor_msgs/Image)
+    - Metric depth from sensor synchronized with decoder output
+    - Original camera resolution
+    - TYPE_32FC1 encoding
+  3. {robot_name}/pointcloud_rgb (sensor_msgs/PointCloud2)
+    - RGB pointcloud from VGGT decoder (current robot)
+    - Contains XYZ coordinates and RGB color
+  4. {robot_name}/pointcloud_neighbor (sensor_msgs/PointCloud2)
+    - Pointcloud from neighbor robot (no color)
+    - Contains only XYZ coordinates
+  5. {robot_name}/camera_info (sensor_msgs/CameraInfo)
+    - Camera intrinsics for the depth sensor
+    - Used to convert depth images to pointclouds
+
+  Current Output Topics
+
+  All topics are prefixed with /{robot_name}/:
+
+  1. {robot_name}/pointcloud_current_rgb_scaled (sensor_msgs/PointCloud2)
+    - Main output: Scaled RGB pointcloud with metric scale
+    - Same structure as input but with corrected scale
+  2. {robot_name}/pointcloud_neighbor_scaled (sensor_msgs/PointCloud2)
+    - Scaled neighbor pointcloud with metric scale
+    - No color information
+
+  Processing Pipeline
+
+  1. Synchronization: Wait for all 4 input messages with matching timestamps
+  2. Scale Recovery:
+    - Resize decoder_sync_depth to match depth_robot1 resolution if needed
+    - Compute scale ratios for each valid pixel pair
+    - Create histogram of ratios and find mode
+    - Refine scale estimate using median of peak values
+  3. Apply Scale:
+    - Scale RGB pointcloud
+    - Scale neighbor pointcloud
+  4. Publish: Output scaled pointclouds
+
+  The node essentially recovers the metric scale relationship between VGGT's normalized output and real-world measurements, then applies this scale to make all outputs metrically accurate.
+*/
+
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/image.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <sensor_msgs/msg/camera_info.hpp>
-#include <realsense2_camera_msgs/msg/rgbd.hpp>
 #include <cv_bridge/cv_bridge.h>
 #include <opencv2/opencv.hpp>
 #include <pcl_conversions/pcl_conversions.h>
@@ -16,351 +64,389 @@ class DepthCompletionNode : public rclcpp::Node {
 public:
     DepthCompletionNode() : Node("depth_completion_node") {
         // Declare parameters
-        this->declare_parameter<std::string>("rgbd_topic", "/camera/rgbd");
-        this->declare_parameter<std::string>("vggt_pointcloud_topic", "/vggt/pointcloud");
-        this->declare_parameter<std::string>("camera_info_topic", "/camera/depth/camera_info");
-        this->declare_parameter<std::string>("output_pointcloud_topic", "/depth_completion/pointcloud");
+        this->declare_parameter<std::string>("robot_name", "");
+        this->declare_parameter<std::string>("depth_robot1_topic", "/depth_robot1");
+        this->declare_parameter<std::string>("decoder_sync_depth_topic", "/decoder_sync_depth");
+        this->declare_parameter<std::string>("pointcloud_rgb_topic", "/pointcloud_rgb");
+        this->declare_parameter<std::string>("pointcloud_neighbor_topic", "/pointcloud_neighbor");
+        this->declare_parameter<std::string>("output_pointcloud_topic", "/pointcloud_current_rgb_scaled");
+        this->declare_parameter<std::string>("camera_info_topic", "/camera_info");
         this->declare_parameter<double>("depth_epsilon", 0.001);
-        this->declare_parameter<int>("speckle_window_size", 100);
-        this->declare_parameter<int>("speckle_range", 4);
-        this->declare_parameter<int>("engine_width", 392);
-        this->declare_parameter<int>("engine_height", 518);
+        this->declare_parameter<double>("min_scale", 0.1);
+        this->declare_parameter<double>("max_scale", 10.0);
+        this->declare_parameter<double>("min_shift", -5.0);
+        this->declare_parameter<double>("max_shift", 5.0);
+        this->declare_parameter<int>("min_valid_points", 100);
+        this->declare_parameter<double>("max_time_diff", 0.1);
 
         // Get parameters
-        auto rgbd_topic = this->get_parameter("rgbd_topic").as_string();
-        auto vggt_pc_topic = this->get_parameter("vggt_pointcloud_topic").as_string();
-        auto camera_info_topic = this->get_parameter("camera_info_topic").as_string();
-        auto output_topic = this->get_parameter("output_pointcloud_topic").as_string();
+        robot_name_ = this->get_parameter("robot_name").as_string();
+        auto depth_robot1_topic = "/" + robot_name_ + this->get_parameter("depth_robot1_topic").as_string();
+        auto decoder_sync_depth_topic = "/" + robot_name_ + this->get_parameter("decoder_sync_depth_topic").as_string();
+        auto pointcloud_rgb_topic = "/" + robot_name_ + this->get_parameter("pointcloud_rgb_topic").as_string();
+        auto pointcloud_neighbor_topic = "/" + robot_name_ + this->get_parameter("pointcloud_neighbor_topic").as_string();
+        auto output_topic = "/" + robot_name_ + this->get_parameter("output_pointcloud_topic").as_string();
+        auto camera_info_topic = "/" + robot_name_ + this->get_parameter("camera_info_topic").as_string();
 
         // Publishers
-        pointcloud_pub_ = this->create_publisher<sensor_msgs::msg::PointCloud2>(
+        scaled_pointcloud_pub_ = this->create_publisher<sensor_msgs::msg::PointCloud2>(
             output_topic, 10);
+        
+        // Publisher for scaled neighbor pointcloud
+        scaled_pointcloud_neighbor_pub_ = this->create_publisher<sensor_msgs::msg::PointCloud2>(
+            "/" + robot_name_ + "/pointcloud_neighbor_scaled", 10);
 
         // Subscribers using message filters for synchronization
-        rgbd_sub_.subscribe(this, rgbd_topic);
-        vggt_pc_sub_.subscribe(this, vggt_pc_topic);
+        depth_robot1_sub_.subscribe(this, depth_robot1_topic);
+        decoder_sync_depth_sub_.subscribe(this, decoder_sync_depth_topic);
+        pointcloud_rgb_sub_.subscribe(this, pointcloud_rgb_topic);
+        pointcloud_neighbor_sub_.subscribe(this, pointcloud_neighbor_topic);
+
+        // Synchronizer for all four topics
+        sync_ = std::make_shared<Synchronizer>(SyncPolicy(10), depth_robot1_sub_, decoder_sync_depth_sub_, pointcloud_rgb_sub_, pointcloud_neighbor_sub_);
+        sync_->registerCallback(std::bind(&DepthCompletionNode::syncCallback, this,
+            std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
+
+        // Subscribe to camera info topic
         camera_info_sub_ = this->create_subscription<sensor_msgs::msg::CameraInfo>(
             camera_info_topic, 10,
             std::bind(&DepthCompletionNode::cameraInfoCallback, this, std::placeholders::_1));
 
-        // Synchronizer
-        sync_ = std::make_shared<Synchronizer>(SyncPolicy(10), rgbd_sub_, vggt_pc_sub_);
-        sync_->registerCallback(std::bind(&DepthCompletionNode::syncCallback, this,
-            std::placeholders::_1, std::placeholders::_2));
-
-        RCLCPP_INFO(this->get_logger(), "Depth Completion Node initialized");
+        RCLCPP_INFO(this->get_logger(), "Depth Completion Node initialized for robot: %s", robot_name_.c_str());
+        RCLCPP_INFO(this->get_logger(), "Subscribing to:");
+        RCLCPP_INFO(this->get_logger(), "  - %s", depth_robot1_topic.c_str());
+        RCLCPP_INFO(this->get_logger(), "  - %s", decoder_sync_depth_topic.c_str());
+        RCLCPP_INFO(this->get_logger(), "  - %s", pointcloud_rgb_topic.c_str());
+        RCLCPP_INFO(this->get_logger(), "  - %s", pointcloud_neighbor_topic.c_str());
+        RCLCPP_INFO(this->get_logger(), "  - %s", camera_info_topic.c_str());
+        RCLCPP_INFO(this->get_logger(), "Publishing to: %s", output_topic.c_str());
     }
 
 private:
     using SyncPolicy = message_filters::sync_policies::ApproximateTime<
-        realsense2_camera_msgs::msg::RGBD, sensor_msgs::msg::PointCloud2>;
+        sensor_msgs::msg::Image, sensor_msgs::msg::Image, sensor_msgs::msg::PointCloud2, sensor_msgs::msg::PointCloud2>;
     using Synchronizer = message_filters::Synchronizer<SyncPolicy>;
 
     // Publishers
-    rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pointcloud_pub_;
+    rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr scaled_pointcloud_pub_;
+    rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr scaled_pointcloud_neighbor_pub_;
 
     // Subscribers
-    message_filters::Subscriber<realsense2_camera_msgs::msg::RGBD> rgbd_sub_;
-    message_filters::Subscriber<sensor_msgs::msg::PointCloud2> vggt_pc_sub_;
+    message_filters::Subscriber<sensor_msgs::msg::Image> depth_robot1_sub_;
+    message_filters::Subscriber<sensor_msgs::msg::Image> decoder_sync_depth_sub_;
+    message_filters::Subscriber<sensor_msgs::msg::PointCloud2> pointcloud_rgb_sub_;
+    message_filters::Subscriber<sensor_msgs::msg::PointCloud2> pointcloud_neighbor_sub_;
     rclcpp::Subscription<sensor_msgs::msg::CameraInfo>::SharedPtr camera_info_sub_;
     
     // Synchronizer
     std::shared_ptr<Synchronizer> sync_;
 
+    // Robot name
+    std::string robot_name_;
+
     // Camera intrinsics
-    cv::Mat camera_matrix_;
-    cv::Mat dist_coeffs_;
-    cv::Mat scaled_camera_matrix_;
     bool camera_info_received_ = false;
-    int original_width_ = 0;
-    int original_height_ = 0;
+    double fx_ = 0.0, fy_ = 0.0, cx_ = 0.0, cy_ = 0.0;
+    int original_width_ = 0, original_height_ = 0;
+    
+    // Scaled intrinsics for depth_robot1 (518x392)
+    double fx_scaled_ = 0.0, fy_scaled_ = 0.0, cx_scaled_ = 0.0, cy_scaled_ = 0.0;
+    const int VGGT_WIDTH = 518;
+    const int VGGT_HEIGHT = 392;
 
-    void cameraInfoCallback(const sensor_msgs::msg::CameraInfo::SharedPtr msg) {
-        if (!camera_info_received_) {
-            // Store original image dimensions
-            original_width_ = msg->width;
-            original_height_ = msg->height;
-            
-            // Extract camera matrix
-            camera_matrix_ = cv::Mat(3, 3, CV_64F);
-            for (int i = 0; i < 3; i++) {
-                for (int j = 0; j < 3; j++) {
-                    camera_matrix_.at<double>(i, j) = msg->k[i * 3 + j];
-                }
-            }
-
-            // Extract distortion coefficients
-            dist_coeffs_ = cv::Mat(msg->d.size(), 1, CV_64F);
-            for (size_t i = 0; i < msg->d.size(); i++) {
-                dist_coeffs_.at<double>(i, 0) = msg->d[i];
-            }
-
-            camera_info_received_ = true;
-            RCLCPP_INFO(this->get_logger(), "Camera intrinsics received for %dx%d image", 
-                        original_width_, original_height_);
-        }
-    }
-
-    void syncCallback(const realsense2_camera_msgs::msg::RGBD::ConstSharedPtr& rgbd_msg,
-                      const sensor_msgs::msg::PointCloud2::ConstSharedPtr& vggt_pc_msg) {
+    void syncCallback(const sensor_msgs::msg::Image::ConstSharedPtr& depth_robot1_msg,
+                      const sensor_msgs::msg::Image::ConstSharedPtr& decoder_sync_depth_msg,
+                      const sensor_msgs::msg::PointCloud2::ConstSharedPtr& pointcloud_rgb_msg,
+                      const sensor_msgs::msg::PointCloud2::ConstSharedPtr& pointcloud_neighbor_msg) {
         
-        if (!camera_info_received_) {
-            RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 1000,
-                "Camera info not received yet, skipping depth completion");
-            return;
-        }
-
         try {
-            // Convert ROS images to OpenCV
-            cv_bridge::CvImagePtr cv_rgb = cv_bridge::toCvCopy(rgbd_msg->rgb, "bgr8");
-            cv_bridge::CvImagePtr cv_depth = cv_bridge::toCvCopy(rgbd_msg->depth, "16UC1");
+            // Convert depth images to OpenCV
+            cv_bridge::CvImagePtr cv_depth_robot1 = cv_bridge::toCvCopy(depth_robot1_msg, sensor_msgs::image_encodings::TYPE_32FC1);
+            cv_bridge::CvImagePtr cv_decoder_sync_depth = cv_bridge::toCvCopy(decoder_sync_depth_msg, sensor_msgs::image_encodings::TYPE_32FC1);
 
-            // Process depth completion
-            cv::Mat completed_depth = processDepthCompletion(
-                cv_rgb->image, cv_depth->image, vggt_pc_msg);
-
-            // Convert to point cloud and publish
-            // The completed_depth is at engine resolution, so resize RGB to match
-            auto engine_width = this->get_parameter("engine_width").as_int();
-            auto engine_height = this->get_parameter("engine_height").as_int();
-            cv::Mat rgb_resized;
-            cv::resize(cv_rgb->image, rgb_resized, cv::Size(engine_width, engine_height), 0, 0, cv::INTER_LINEAR);
+            // Recover scale by comparing depth_robot1 with decoder_sync_depth using histogram alignment
+            float scale;
+            bool alignment_success = recoverScaleHistogram(cv_depth_robot1->image, cv_decoder_sync_depth->image, scale);
             
-            auto output_pc = createPointCloud(rgb_resized, completed_depth, rgbd_msg->header);
-            pointcloud_pub_->publish(*output_pc);
+            if (!alignment_success) {
+                RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 1000,
+                    "Failed to recover scale, using default scale=1.0");
+                scale = 1.0f;
+            }
+            
+            // Apply scale to the RGB pointcloud
+            auto scaled_rgb_pointcloud = scalePointcloud(pointcloud_rgb_msg, scale);
+            scaled_pointcloud_pub_->publish(*scaled_rgb_pointcloud);
+            
+            // Apply scale to the neighbor pointcloud (no color)
+            auto scaled_neighbor_pointcloud = scalePointcloudNoColor(pointcloud_neighbor_msg, scale);
+            scaled_pointcloud_neighbor_pub_->publish(*scaled_neighbor_pointcloud);
+
+            RCLCPP_DEBUG(this->get_logger(), "Applied scale=%.3f to pointclouds", scale);
 
         } catch (cv_bridge::Exception& e) {
             RCLCPP_ERROR(this->get_logger(), "cv_bridge exception: %s", e.what());
+        } catch (const std::exception& e) {
+            RCLCPP_ERROR(this->get_logger(), "Exception in syncCallback: %s", e.what());
         }
     }
 
-    cv::Mat processDepthCompletion(const cv::Mat& rgb, const cv::Mat& depth,
-                                   const sensor_msgs::msg::PointCloud2::ConstSharedPtr& vggt_pc) {
-        // 1. Resize images to engine dimensions (neural network output size)
-        auto engine_width = this->get_parameter("engine_width").as_int();
-        auto engine_height = this->get_parameter("engine_height").as_int();
-        
-        cv::Mat rgb_resized, depth_resized;
-        cv::resize(rgb, rgb_resized, cv::Size(engine_width, engine_height), 0, 0, cv::INTER_LINEAR);
-        cv::resize(depth, depth_resized, cv::Size(engine_width, engine_height), 0, 0, cv::INTER_NEAREST);
-        
-        // 2. Update camera intrinsics for the resized image
-        double scale_x = static_cast<double>(engine_width) / rgb.cols;
-        double scale_y = static_cast<double>(engine_height) / rgb.rows;
-        scaled_camera_matrix_ = camera_matrix_.clone();
-        scaled_camera_matrix_.at<double>(0, 0) *= scale_x;  // fx
-        scaled_camera_matrix_.at<double>(1, 1) *= scale_y;  // fy
-        scaled_camera_matrix_.at<double>(0, 2) *= scale_x;  // cx
-        scaled_camera_matrix_.at<double>(1, 2) *= scale_y;  // cy
-        
-        // 3. Undistort images
-        cv::Mat rgb_undistorted, depth_undistorted;
-        cv::undistort(rgb_resized, rgb_undistorted, scaled_camera_matrix_, dist_coeffs_);
-        cv::undistort(depth_resized, depth_undistorted, scaled_camera_matrix_, dist_coeffs_);
-
-        // 4. Filter speckle noise
-        cv::Mat depth_filtered;
-        filterSpeckleNoise(depth_undistorted, depth_filtered);
-
-        // 5. Project VGGT point cloud to depth image
-        cv::Mat vggt_depth_map = projectPointCloudToDepthMap(vggt_pc, depth_filtered.size());
-
-        // 6. Perform least squares depth completion
-        cv::Mat completed_depth = leastSquaresDepthCompletion(depth_filtered, vggt_depth_map);
-
-        return completed_depth;
+    void cameraInfoCallback(const sensor_msgs::msg::CameraInfo::SharedPtr msg) {
+        if (!camera_info_received_) {
+            fx_ = msg->k[0];  // K[0,0]
+            fy_ = msg->k[4];  // K[1,1]
+            cx_ = msg->k[2];  // K[0,2]
+            cy_ = msg->k[5];  // K[1,2]
+            original_width_ = msg->width;
+            original_height_ = msg->height;
+            
+            // Calculate scaled intrinsics for VGGT resolution (518x392)
+            double scale_x = static_cast<double>(VGGT_WIDTH) / original_width_;
+            double scale_y = static_cast<double>(VGGT_HEIGHT) / original_height_;
+            
+            fx_scaled_ = fx_ * scale_x;
+            fy_scaled_ = fy_ * scale_y;
+            cx_scaled_ = cx_ * scale_x;
+            cy_scaled_ = cy_ * scale_y;
+            
+            camera_info_received_ = true;
+            RCLCPP_INFO(this->get_logger(), "Camera intrinsics received for %dx%d: fx=%.2f, fy=%.2f, cx=%.2f, cy=%.2f", 
+                        original_width_, original_height_, fx_, fy_, cx_, cy_);
+            RCLCPP_INFO(this->get_logger(), "Scaled intrinsics for %dx%d: fx=%.2f, fy=%.2f, cx=%.2f, cy=%.2f", 
+                        VGGT_WIDTH, VGGT_HEIGHT, fx_scaled_, fy_scaled_, cx_scaled_, cy_scaled_);
+        }
     }
 
-    void filterSpeckleNoise(const cv::Mat& depth_in, cv::Mat& depth_out) {
-        auto max_speckle_size = this->get_parameter("speckle_window_size").as_int();
-        auto max_diff = this->get_parameter("speckle_range").as_int();
-        
-        // Convert to signed 16-bit for cv::filterSpeckles
-        cv::Mat depth_s16;
-        depth_in.convertTo(depth_s16, CV_16S);
-        
-        // Apply OpenCV's filterSpeckles
-        // This removes small noise regions in disparity/depth maps
-        cv::filterSpeckles(depth_s16, 0, max_speckle_size, max_diff);
-        
-        // Convert back to unsigned 16-bit
-        depth_s16.convertTo(depth_out, CV_16U);
-    }
-
-    cv::Mat calculateDisparity(const cv::Mat& depth) {
+    bool recoverScaleHistogram(const cv::Mat& depth_robot1, const cv::Mat& decoder_sync_depth, float& scale) {
         auto epsilon = this->get_parameter("depth_epsilon").as_double();
-        
-        cv::Mat disparity;
-        cv::Mat depth_float;
-        depth.convertTo(depth_float, CV_32F, 0.001); // Convert mm to meters
+        auto min_valid_points = this->get_parameter("min_valid_points").as_int();
+        auto min_scale = this->get_parameter("min_scale").as_double();
+        auto max_scale = this->get_parameter("max_scale").as_double();
 
-        // Calculate disparity = 1 / (depth + epsilon)
-        disparity = 1.0 / (depth_float + epsilon);
-
-        return disparity;
-    }
-
-    cv::Mat projectPointCloudToDepthMap(const sensor_msgs::msg::PointCloud2::ConstSharedPtr& pc_msg,
-                                       const cv::Size& image_size) {
-        cv::Mat depth_map = cv::Mat::zeros(image_size, CV_16U);
-        
-        // Convert point cloud to PCL format
-        pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
-        pcl::fromROSMsg(*pc_msg, *cloud);
-        
-        // Use scaled camera intrinsics for projection
-        float fx = scaled_camera_matrix_.at<double>(0, 0);
-        float fy = scaled_camera_matrix_.at<double>(1, 1);
-        float cx = scaled_camera_matrix_.at<double>(0, 2);
-        float cy = scaled_camera_matrix_.at<double>(1, 2);
-        
-        // Project each point to image plane
-        for (const auto& point : cloud->points) {
-            if (point.z <= 0 || std::isnan(point.z)) continue;
-            
-            int u = static_cast<int>(fx * point.x / point.z + cx);
-            int v = static_cast<int>(fy * point.y / point.z + cy);
-            
-            if (u >= 0 && u < image_size.width && v >= 0 && v < image_size.height) {
-                uint16_t depth_mm = static_cast<uint16_t>(point.z * 1000.0f);
-                // Keep closest depth value if multiple points project to same pixel
-                if (depth_map.at<uint16_t>(v, u) == 0 || depth_mm < depth_map.at<uint16_t>(v, u)) {
-                    depth_map.at<uint16_t>(v, u) = depth_mm;
-                }
-            }
+        // Resize decoder_sync_depth to match depth_robot1 dimensions if needed
+        cv::Mat decoder_sync_depth_resized;
+        if (decoder_sync_depth.size() != depth_robot1.size()) {
+            cv::resize(decoder_sync_depth, decoder_sync_depth_resized, depth_robot1.size(), 0, 0, cv::INTER_LINEAR);
+        } else {
+            decoder_sync_depth_resized = decoder_sync_depth;
         }
-        
-        return depth_map;
-    }
 
-    cv::Mat leastSquaresDepthCompletion(const cv::Mat& sensor_depth, const cv::Mat& predicted_depth) {
-        auto epsilon = this->get_parameter("depth_epsilon").as_double();
+        // Collect scale ratios from valid pixel pairs
+        std::vector<float> scale_ratios;
         
-        // Convert depth to disparity
-        cv::Mat sensor_float, predicted_float;
-        sensor_depth.convertTo(sensor_float, CV_32F, 0.001); // mm to meters
-        predicted_depth.convertTo(predicted_float, CV_32F, 0.001); // mm to meters
-        
-        // Create mask for valid pixels where both sensor and predicted data exist
-        cv::Mat valid_mask = (sensor_float > epsilon) & (predicted_float > epsilon);
-        
-        // Calculate disparities for valid pixels
-        cv::Mat sensor_disparity = cv::Mat::zeros(sensor_float.size(), CV_32F);
-        cv::Mat predicted_disparity = cv::Mat::zeros(predicted_float.size(), CV_32F);
-        
-        sensor_float.forEach<float>([&](float& pixel, const int pos[]) {
-            if (valid_mask.at<uint8_t>(pos[0], pos[1]) && pixel > epsilon) {
-                sensor_disparity.at<float>(pos[0], pos[1]) = 1.0f / pixel;
-                predicted_disparity.at<float>(pos[0], pos[1]) = 1.0f / predicted_float.at<float>(pos[0], pos[1]);
-            }
-        });
-        
-        // Extract valid disparity values into vectors
-        std::vector<float> sensor_disp_vec, predicted_disp_vec;
-        for (int y = 0; y < valid_mask.rows; y++) {
-            for (int x = 0; x < valid_mask.cols; x++) {
-                if (valid_mask.at<uint8_t>(y, x)) {
-                    sensor_disp_vec.push_back(sensor_disparity.at<float>(y, x));
-                    predicted_disp_vec.push_back(predicted_disparity.at<float>(y, x));
-                }
-            }
-        }
-        
-        // Default alignment parameters
-        float scale = 1.0f, shift = 0.0f;
-        
-        if (sensor_disp_vec.size() >= 10) {
-            // Create matrices for SVD: sensor_disp = scale * predicted_disp + shift
-            // We need to solve: [predicted_disp, 1] * [scale; shift] = sensor_disp
-            int n = sensor_disp_vec.size();
-            cv::Mat A(n, 2, CV_32F);
-            cv::Mat b(n, 1, CV_32F);
-            
-            // Fill matrices
-            for (int i = 0; i < n; i++) {
-                A.at<float>(i, 0) = predicted_disp_vec[i];  // predicted disparity
-                A.at<float>(i, 1) = 1.0f;                   // for shift term
-                b.at<float>(i, 0) = sensor_disp_vec[i];     // sensor disparity
-            }
-            
-            // Solve using SVD: A * x = b, where x = [scale; shift]
-            cv::Mat x;
-            cv::solve(A, b, x, cv::DECOMP_SVD);
-            
-            scale = x.at<float>(0, 0);
-            shift = x.at<float>(1, 0);
-            
-            RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 1000,
-                "SVD alignment: scale=%.3f, shift=%.3f, valid_points=%d", 
-                scale, shift, n);
-        }
-        
-        // Apply alignment to all predicted disparities
-        cv::Mat completed_depth = sensor_depth.clone();
-        
-        for (int y = 0; y < completed_depth.rows; y++) {
-            for (int x = 0; x < completed_depth.cols; x++) {
-                // Fill missing sensor depths with aligned predicted depths
-                if (sensor_float.at<float>(y, x) <= epsilon && predicted_float.at<float>(y, x) > epsilon) {
-                    // Calculate aligned disparity
-                    float pred_disp = 1.0f / predicted_float.at<float>(y, x);
-                    float aligned_disp = scale * pred_disp + shift;
+        for (int y = 0; y < depth_robot1.rows; y++) {
+            for (int x = 0; x < depth_robot1.cols; x++) {
+                float d1 = depth_robot1.at<float>(y, x);
+                float d2 = decoder_sync_depth_resized.at<float>(y, x);
+                
+                // Check if both depths are valid
+                if (d1 > epsilon && d2 > epsilon && !std::isnan(d1) && !std::isnan(d2) && 
+                    std::isfinite(d1) && std::isfinite(d2)) {
+                    float ratio = d2 / d1;  // decoder_sync_depth = scale * depth_robot1
                     
-                    // TODO: Convert back to depth
-                    if (aligned_disp > epsilon) {
-                        float aligned_depth = 1.0f / aligned_disp;
-                        uint16_t depth_mm = static_cast<uint16_t>(aligned_depth * 1000.0f);
-                        
-                        if (depth_mm > 0 && depth_mm < 65535) {
-                            completed_depth.at<uint16_t>(y, x) = depth_mm;
-                        }
+                    // Only keep ratios within reasonable bounds
+                    if (ratio >= min_scale && ratio <= max_scale) {
+                        scale_ratios.push_back(ratio);
                     }
                 }
             }
         }
-        
-        return completed_depth;
-    }
 
-    sensor_msgs::msg::PointCloud2::SharedPtr createPointCloud(
-        const cv::Mat& rgb, const cv::Mat& depth, const std_msgs::msg::Header& header) {
-        
-        pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-
-        // Use scaled camera intrinsics since images are at engine resolution
-        float fx = scaled_camera_matrix_.at<double>(0, 0);
-        float fy = scaled_camera_matrix_.at<double>(1, 1);
-        float cx = scaled_camera_matrix_.at<double>(0, 2);
-        float cy = scaled_camera_matrix_.at<double>(1, 2);
-
-        for (int v = 0; v < depth.rows; v++) {
-            for (int u = 0; u < depth.cols; u++) {
-                uint16_t depth_value = depth.at<uint16_t>(v, u);
-                if (depth_value == 0) continue;
-
-                float z = depth_value * 0.001f; // mm to meters
-                float x = (u - cx) * z / fx;
-                float y = (v - cy) * z / fy;
-
-                pcl::PointXYZRGB point;
-                point.x = x;
-                point.y = y;
-                point.z = z;
-
-                cv::Vec3b color = rgb.at<cv::Vec3b>(v, u);
-                point.r = color[2];
-                point.g = color[1];
-                point.b = color[0];
-
-                cloud->push_back(point);
-            }
+        if (static_cast<int>(scale_ratios.size()) < min_valid_points) {
+            RCLCPP_WARN(this->get_logger(), "Insufficient valid points for scale recovery: %zu < %ld", 
+                       scale_ratios.size(), min_valid_points);
+            return false;
         }
 
-        auto msg = std::make_shared<sensor_msgs::msg::PointCloud2>();
-        pcl::toROSMsg(*cloud, *msg);
-        msg->header = header;
+        // Create histogram of scale ratios
+        const int num_bins = 100;
+        float bin_width = (max_scale - min_scale) / num_bins;
+        std::vector<int> histogram(num_bins, 0);
         
-        return msg;
+        // Fill histogram
+        for (float ratio : scale_ratios) {
+            int bin_idx = static_cast<int>((ratio - min_scale) / bin_width);
+            bin_idx = std::max(0, std::min(num_bins - 1, bin_idx));
+            histogram[bin_idx]++;
+        }
+        
+        // Find the bin with maximum count (mode)
+        int max_bin_idx = 0;
+        int max_count = 0;
+        for (int i = 0; i < num_bins; i++) {
+            if (histogram[i] > max_count) {
+                max_count = histogram[i];
+                max_bin_idx = i;
+            }
+        }
+        
+        // Refine scale estimate using values in the peak bin and neighboring bins
+        std::vector<float> peak_values;
+        float peak_min = min_scale + (max_bin_idx - 1) * bin_width;
+        float peak_max = min_scale + (max_bin_idx + 2) * bin_width;
+        
+        for (float ratio : scale_ratios) {
+            if (ratio >= peak_min && ratio <= peak_max) {
+                peak_values.push_back(ratio);
+            }
+        }
+        
+        // Calculate median of peak values for robust scale estimate
+        if (peak_values.empty()) {
+            scale = min_scale + (max_bin_idx + 0.5f) * bin_width;
+        } else {
+            std::sort(peak_values.begin(), peak_values.end());
+            scale = peak_values[peak_values.size() / 2];
+        }
+        
+        // Calculate confidence metric (percentage of values in peak)
+        float confidence = static_cast<float>(peak_values.size()) / scale_ratios.size() * 100.0f;
+        
+        RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 1000,
+            "Histogram scale recovery: scale=%.3f, confidence=%.1f%%, valid_points=%zu, peak_points=%zu", 
+            scale, confidence, scale_ratios.size(), peak_values.size());
+        
+        return true;
+    }
+
+    sensor_msgs::msg::PointCloud2::SharedPtr scalePointcloud(
+        const sensor_msgs::msg::PointCloud2::ConstSharedPtr& input_pc, float scale) {
+        
+        // Convert ROS pointcloud to PCL
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr input_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+        pcl::fromROSMsg(*input_pc, *input_cloud);
+        
+        // Create output pointcloud
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr output_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+        output_cloud->header = input_cloud->header;
+        output_cloud->width = input_cloud->width;
+        output_cloud->height = input_cloud->height;
+        output_cloud->is_dense = input_cloud->is_dense;
+        output_cloud->points.reserve(input_cloud->points.size());
+        
+        // Apply scale to each point
+        for (const auto& point : input_cloud->points) {
+            pcl::PointXYZRGB scaled_point;
+            
+            // Scale all coordinates uniformly
+            scaled_point.x = point.x * scale;
+            scaled_point.y = point.y * scale;
+            scaled_point.z = point.z * scale;
+            
+            // Preserve color information
+            scaled_point.r = point.r;
+            scaled_point.g = point.g;
+            scaled_point.b = point.b;
+            
+            output_cloud->points.push_back(scaled_point);
+        }
+        
+        // Convert back to ROS message
+        auto output_msg = std::make_shared<sensor_msgs::msg::PointCloud2>();
+        pcl::toROSMsg(*output_cloud, *output_msg);
+        output_msg->header = input_pc->header;
+        
+        RCLCPP_DEBUG(this->get_logger(), "Scaled RGB pointcloud by factor %.3f", scale);
+        
+        return output_msg;
+    }
+    
+    sensor_msgs::msg::PointCloud2::SharedPtr scalePointcloudNoColor(
+        const sensor_msgs::msg::PointCloud2::ConstSharedPtr& input_pc, float scale) {
+        
+        // Convert ROS pointcloud to PCL (no color)
+        pcl::PointCloud<pcl::PointXYZ>::Ptr input_cloud(new pcl::PointCloud<pcl::PointXYZ>);
+        pcl::fromROSMsg(*input_pc, *input_cloud);
+        
+        // Create output pointcloud
+        pcl::PointCloud<pcl::PointXYZ>::Ptr output_cloud(new pcl::PointCloud<pcl::PointXYZ>);
+        output_cloud->header = input_cloud->header;
+        output_cloud->width = input_cloud->width;
+        output_cloud->height = input_cloud->height;
+        output_cloud->is_dense = input_cloud->is_dense;
+        output_cloud->points.reserve(input_cloud->points.size());
+        
+        // Apply scale to each point
+        for (const auto& point : input_cloud->points) {
+            pcl::PointXYZ scaled_point;
+            
+            // Scale all coordinates uniformly
+            scaled_point.x = point.x * scale;
+            scaled_point.y = point.y * scale;
+            scaled_point.z = point.z * scale;
+            
+            output_cloud->points.push_back(scaled_point);
+        }
+        
+        // Convert back to ROS message
+        auto output_msg = std::make_shared<sensor_msgs::msg::PointCloud2>();
+        pcl::toROSMsg(*output_cloud, *output_msg);
+        output_msg->header = input_pc->header;
+        
+        RCLCPP_DEBUG(this->get_logger(), "Scaled neighbor pointcloud by factor %.3f", scale);
+        
+        return output_msg;
+    }
+
+    sensor_msgs::msg::PointCloud2::SharedPtr depthImageToPointCloud(
+        const cv::Mat& depth_image, const std::string& frame_id, bool use_scaled_intrinsics) {
+        
+        pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+        
+        if (!camera_info_received_) {
+            RCLCPP_WARN(this->get_logger(), "Camera info not received, cannot create pointcloud from depth");
+            auto empty_msg = std::make_shared<sensor_msgs::msg::PointCloud2>();
+            empty_msg->header.stamp = this->now();
+            empty_msg->header.frame_id = frame_id;
+            return empty_msg;
+        }
+        
+        // Select appropriate intrinsics based on image size
+        double fx, fy, cx, cy;
+        if (use_scaled_intrinsics || (depth_image.cols == VGGT_WIDTH && depth_image.rows == VGGT_HEIGHT)) {
+            // Use scaled intrinsics for VGGT resolution (518x392)
+            fx = fx_scaled_;
+            fy = fy_scaled_;
+            cx = cx_scaled_;
+            cy = cy_scaled_;
+            RCLCPP_DEBUG(this->get_logger(), "Using scaled intrinsics for %dx%d image", depth_image.cols, depth_image.rows);
+        } else {
+            // Use original intrinsics
+            fx = fx_;
+            fy = fy_;
+            cx = cx_;
+            cy = cy_;
+            RCLCPP_DEBUG(this->get_logger(), "Using original intrinsics for %dx%d image", depth_image.cols, depth_image.rows);
+        }
+        
+        // Convert depth image to pointcloud using appropriate intrinsics
+        for (int v = 0; v < depth_image.rows; v++) {
+            for (int u = 0; u < depth_image.cols; u++) {
+                float depth = depth_image.at<float>(v, u);
+                
+                if (depth > 0 && !std::isnan(depth) && std::isfinite(depth)) {
+                    pcl::PointXYZ point;
+                    
+                    // Convert pixel coordinates to 3D coordinates
+                    point.z = depth;
+                    point.x = (u - cx) * depth / fx;
+                    point.y = (v - cy) * depth / fy;
+                    
+                    cloud->points.push_back(point);
+                }
+            }
+        }
+        
+        // Convert to ROS message
+        auto output_msg = std::make_shared<sensor_msgs::msg::PointCloud2>();
+        pcl::toROSMsg(*cloud, *output_msg);
+        output_msg->header.stamp = this->now();
+        output_msg->header.frame_id = frame_id;
+        
+        RCLCPP_DEBUG(this->get_logger(), "Created pointcloud with %zu points from %dx%d depth image", 
+                     cloud->points.size(), depth_image.cols, depth_image.rows);
+        
+        return output_msg;
     }
 };
 
