@@ -628,11 +628,9 @@ void VggtDecoderNode::process_decoder_output(
           auto rgb_pointcloud =
               create_rgb_point_cloud(robot_points, robot_points_conf, rgb_image,
                                      depth_width_, depth_height_, frame_id_);
-          auto subsampled_rgb_pointcloud =
-              subsample_rgb_pointcloud(rgb_pointcloud, voxel_leaf_size_);
-          rgb_pointcloud_pub_->publish(subsampled_rgb_pointcloud);
+          rgb_pointcloud_pub_->publish(rgb_pointcloud);
           RCLCPP_DEBUG(this->get_logger(),
-                       "Published subsampled RGB point cloud");
+                       "Published RGB point cloud");
         } else {
           RCLCPP_INFO(this->get_logger(),
                       "No RGB image found within acceptable timestamp range, "
