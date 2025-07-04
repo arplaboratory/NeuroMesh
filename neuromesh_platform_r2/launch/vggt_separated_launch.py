@@ -20,6 +20,9 @@ def launch_setup(context):
     # Frame ID parameter
     frame_id = LaunchConfiguration('frame_id').perform(context)
     
+    # Voxel leaf size parameter
+    voxel_leaf_size = LaunchConfiguration('voxel_leaf_size').perform(context)
+    
     # Path to config file
     config_file = os.path.join(
         get_package_share_directory('neuromesh_platform_r2'),
@@ -114,7 +117,8 @@ def launch_setup(context):
                     'vggt.decoder.model_path': os.path.join(
                         get_package_share_directory('tensorrt_engine'),
                         'models/vggt_onnx_2x/vggt_aggregator_2x.engine'
-                    )
+                    ),
+                    'vggt.decoder.voxel_leaf_size': float(voxel_leaf_size)
                 }
             ],
             remappings=remappings,
@@ -189,6 +193,12 @@ def generate_launch_description():
         description='Frame ID for published images (defaults to /robot_name/vggt)'
     )
     
+    voxel_leaf_size_arg = DeclareLaunchArgument(
+        name='voxel_leaf_size',
+        default_value='0.02',
+        description='Voxel leaf size for pointcloud subsampling in decoder (meters)'
+    )
+    
     opaque_function_action = OpaqueFunction(function=launch_setup)
     
     return LaunchDescription([
@@ -200,5 +210,6 @@ def generate_launch_description():
         depth_enabled_arg,
         depth_raw_topic_arg,
         frame_id_arg,
+        voxel_leaf_size_arg,
         opaque_function_action,
     ])

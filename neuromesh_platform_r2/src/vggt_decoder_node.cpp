@@ -77,6 +77,9 @@ VggtDecoderNode::VggtDecoderNode(const rclcpp::NodeOptions &options)
   
   // Declare frame_id parameter
   this->declare_parameter<std::string>("frame_id", "");
+  
+  // Declare voxel leaf size parameter
+  this->declare_parameter<double>("vggt.decoder.voxel_leaf_size", 0.02);
 
   // Get parameters
   robot_name_ = this->get_parameter("robot_name").as_string();
@@ -97,6 +100,11 @@ VggtDecoderNode::VggtDecoderNode(const rclcpp::NodeOptions &options)
   if (frame_id_.empty()) {
     frame_id_ = "/" + robot_name_ + "/vggt";
   }
+  
+  // Get voxel leaf size parameter
+  voxel_leaf_size_ = static_cast<float>(this->get_parameter("vggt.decoder.voxel_leaf_size").as_double());
+  
+  RCLCPP_INFO(this->get_logger(), "VGGT Decoder voxel leaf size: %.3f m", voxel_leaf_size_);
 
   // Set depth dimensions (same as image for VGGT)
   depth_width_ = image_width_;
@@ -561,7 +569,6 @@ void VggtDecoderNode::process_decoder_output(
     }
   }
 
-  float voxel_leaf_size_ = 0.02f;
 
   // Process outputs for each robot
   for (int robot_idx = 0; robot_idx < num_robots_; ++robot_idx) {
