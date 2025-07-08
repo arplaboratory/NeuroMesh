@@ -6,10 +6,10 @@
 namespace engine_interface
 {
 
-class InferenceEngineBase
+class BaseEngine
 {
 public:
-    virtual ~InferenceEngineBase();
+    virtual ~BaseEngine();
 
     // Load model (path, input/output dims, etc.)
     virtual bool loadModel(const std::string& model_path,

@@ -159,4 +159,4 @@ void ONNXEngine::runInference(const std::vector<const void *> &inputTensors,
 } // namespace engine_interface
 
 #include <pluginlib/class_list_macros.hpp>
-PLUGINLIB_EXPORT_CLASS(engine_interface::ONNXEngine, engine_interface::InferenceEngineBase)
+PLUGINLIB_EXPORT_CLASS(engine_interface::ONNXEngine, engine_interface::BaseEngine)

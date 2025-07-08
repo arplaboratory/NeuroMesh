@@ -1,7 +1,7 @@
-<library path="libonnx_engine.so">
+<library path="onnx_engine">
   <class name="engine_interface::ONNXEngine"
          type="engine_interface::ONNXEngine"
-         base_class_type="engine_interface::InferenceEngineBase">
+         base_class_type="engine_interface::BaseEngine">
     <description>ONNX Runtime inference engine plugin</description>
   </class>
 </library>

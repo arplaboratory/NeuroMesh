@@ -9,37 +9,18 @@ EngineInterfaceNode::EngineInterfaceNode(
   const std::string& plugin_package,
   const std::string& plugin_class
 )
-  : Node("EngineInterfaceNode", 
+  : Node("EngineInterfaceNode",
     options.allow_undeclared_parameters(true)
-        .automatically_declare_parameters_from_overrides(true)),
-    engine_loader_(plugin_package, "engine_interface::InferenceEngineBase")
+               .automatically_declare_parameters_from_overrides(true)),
+    engine_loader_(plugin_package, plugin_class)
 {
   // set param vars
   this->declare_parameter<std::string>("tensor_qos_profile", "default");
-  this->declare_parameter<std::string>("engine_plugin_package", plugin_package);
-  this->declare_parameter<std::string>("engine_type", plugin_class);
 
   this->get_parameter("model_names", models_param);
   model_names = string_to_vector(models_param);
   std::string plugin_pkg = this->get_parameter("engine_plugin_package").as_string();
   std::string plugin_cls = this->get_parameter("engine_type").as_string();
-
-  // loader
-  if (plugin_pkg != plugin_package) {
-    engine_loader_ = pluginlib::ClassLoader<InferenceEngineBase>(plugin_pkg, "engine_interface::InferenceEngineBase");
-  }
-
-  for (const auto& m : model_names) {
-          std::string engine_type = this->declare_parameter(m + ".engine_type", plugin_cls);
-          try {
-              engines[m] = engine_loader_.createSharedInstance(engine_type);
-              engines[m]->loadModel(model_paths[m], 
-                                    input_dimensions[m], 
-                                    tensor_typelengths[m]);
-          } catch (const pluginlib::PluginlibException& ex) {
-              RCLCPP_ERROR(this->get_logger(), "Failed to load engine plugin: %s", ex.what());
-          }
-      }
 
   for (std::vector<std::string>::iterator it = model_names.begin();
         it != model_names.end(); it++) {
@@ -75,7 +56,80 @@ EngineInterfaceNode::EngineInterfaceNode(
 
       continue;
     }
+
+    // expand strings to dims
+    RCLCPP_DEBUG(this->get_logger(), "Getting input dimension");
+    input_dimensions[m] = string_to_dims(input_dimensions_strings[m]);
+    RCLCPP_DEBUG(this->get_logger(), "Got input dimensions");
+
+    RCLCPP_DEBUG(this->get_logger(), "Getting output dimensions");
+    output_dimensions[m] = string_to_dims(output_dimensions_strings[m]);
+    RCLCPP_DEBUG(this->get_logger(), "Got output dimensions");
+    RCLCPP_DEBUG(this->get_logger(), "Getting input lengths");
+    input_lengths[m].resize(input_dimensions[m].size());
+    for (size_t i = 0; i < input_dimensions[m].size(); ++i) {
+      input_lengths[m][i] = 1;
+      for (uint32_t dim : input_dimensions[m][i]) {
+        input_lengths[m][i] *= dim;
+      }
+    }
+    RCLCPP_DEBUG(this->get_logger(), "Got input lengths");
+
+    RCLCPP_DEBUG(this->get_logger(), "Getting output lengths");
+    output_lengths[m].resize(output_dimensions[m].size());
+    for (size_t i = 0; i < output_dimensions[m].size(); ++i) {
+      output_lengths[m][i] = 1;
+      for (uint32_t dim : output_dimensions[m][i]) {
+        output_lengths[m][i] *= dim;
+      }
+    }
+    RCLCPP_DEBUG(this->get_logger(), "Got output lengths");
+
+    // set tensor type
+    tensor_typelengths[m] = tensor_string_to_typelength(tensor_type_params[m]);
   }
+
+  // iterate backwords over failed models backwords to properly erase from
+  // model_names
+  for (std::vector<int>::reverse_iterator it = failed_models.rbegin();
+       it != failed_models.rend(); it++) {
+    model_names.erase(model_names.begin() + *it); // erase by index
+  }
+
+  this->get_parameter("tensor_qos_profile", tensor_qos_param);
+  auto tensor_qos =
+      rclcpp::QoS(rclcpp::KeepLast(10), parseQoSString(tensor_qos_param));
+
+  // // Publisher and subscriber setup
+  tensor_publisher_ = this->create_publisher<neuromesh_interfaces::msg::Tensor>(
+      "tensorrt_output", tensor_qos);
+  RCLCPP_INFO(this->get_logger(), "Creating service");
+  service_ = this->create_service<neuromesh_interfaces::srv::TensorRequest>(
+      "tensorrt_request",
+      std::bind(&EngineInterfaceNode::tensor_request_callback, this,
+                std::placeholders::_1, std::placeholders::_2));
+
+  for (std::vector<std::string>::iterator it = model_names.begin();
+       it != model_names.end(); it++) {
+    std::string m = *it;
+    try {
+        engines[m] = engine_loader_.createSharedInstance(plugin_cls);
+        RCLCPP_INFO(this->get_logger(), "Loading model");
+        engines[m]->loadModel(model_paths[m], 
+                              input_dimensions[m], 
+                              tensor_typelengths[m]);
+    } catch (const pluginlib::PluginlibException& ex) {
+        RCLCPP_ERROR(this->get_logger(), "Failed to load engine plugin: %s", ex.what());
+    }
+
+  if (engines[m].get() == NULL) {
+      RCLCPP_ERROR(this->get_logger(), "Failed to initialize engine %s.",
+                   m.c_str());
+    }
+  
+  }
+
+  RCLCPP_DEBUG(this->get_logger(), "Done loading parameters.");
 
 }
 std::vector<neuromesh_interfaces::msg::Tensor> EngineInterfaceNode::execute(
@@ -194,6 +248,29 @@ void EngineInterfaceNode::tensor_request_callback(
   std::vector<neuromesh_interfaces::msg::Tensor> input_tensors =
       request->tensor1;
   response->tensor2 = execute(request->model_name, input_tensors);
+}
+
+std::vector<uint> EngineInterfaceNode::string_to_dims_single(std::string in) {
+  std::stringstream stream(in);
+  std::string element;
+  std::vector<uint> out;
+
+  while (getline(stream, element, ',')) {
+    out.push_back(std::stoi(element));
+  }
+  return out;
+}
+
+std::vector<std::vector<uint>> EngineInterfaceNode::string_to_dims(std::string in) {
+  std::stringstream stream(in);
+  std::string element;
+  std::vector<std::vector<uint>> out;
+
+  while (getline(stream, element, ';')) {
+    std::vector<uint> dims = string_to_dims_single(element);
+    out.push_back(dims);
+  }
+  return out;
 }
 
 std::vector<std::string> EngineInterfaceNode::string_to_vector(std::string in) {

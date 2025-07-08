@@ -1,5 +1,4 @@
 #include "tensorrt_engine/trt_engine_modified.h"
-
 #include <cassert>
 #include <fstream>
 #include <iostream>
@@ -192,3 +191,6 @@ void TRTEngine::runInference(const std::vector<const void *> &inputTensors,
   cudaStreamDestroy(stream);
 }
 } // namespace engine_interface
+
+#include <pluginlib/class_list_macros.hpp>
+PLUGINLIB_EXPORT_CLASS(engine_interface::TRTEngine, engine_interface::BaseEngine)

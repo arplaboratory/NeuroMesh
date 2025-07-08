@@ -96,29 +96,31 @@ def launch_setup(context):
     )
     composable_nodes.append(
         ComposableNode(
-            package="tensorrt_engine",
+            package="engine_interface",
             namespace=name,
             name=["engine", LaunchConfiguration("agent_num")],
-            plugin="tensorrt_engine_node::TensorRTEngineNode",
+            plugin="engine_interface::EngineInterfaceNode",
             parameters=[
                 {
+                    "engine_plugin_package": "tensorrt_engine",
+                    "engine_type": "engine_interface::TRTEngine",
                     "model_names": "encoder,decoder1,decoder2",
                     "encoder.model_path": get_package_share_directory("tensorrt_engine")
-                    + "/models/encoder_local.trt",
+                    + "/models/gat/encoder_local.trt",
                     "encoder.input_dimensions": "1,1,5",
                     "encoder.output_dimensions": "1,1,16",
                     "encoder.tensor_type": "fp32",
                     "decoder1.model_path": get_package_share_directory(
                         "tensorrt_engine"
                     )
-                    + "/models/multi_head_gat_layer1.trt",
+                    + "/models/gat/multi_head_gat_layer1.trt",
                     "decoder1.input_dimensions": "1,1,16;1,4,16;1,1,16",
                     "decoder1.output_dimensions": "1,1,16",
                     "decoder1.tensor_type": "fp32",
                     "decoder2.model_path": get_package_share_directory(
                         "tensorrt_engine"
                     )
-                    + "/models/multi_head_gat_layer2.trt",
+                    + "/models/gat/multi_head_gat_layer2.trt",
                     "decoder2.input_dimensions": "1,16;1,4,16;1,1,16",
                     "decoder2.output_dimensions": "1,1,5",
                     "decoder2.tensor_type": "fp32",
@@ -182,29 +184,31 @@ def launch_setup(context):
             )
             composable_nodes.append(
                 ComposableNode(
-                    package="tensorrt_engine",
+                    package="engine_interface",
                     namespace=missing_agent,
                     name=["engine", LaunchConfiguration("agent_num")],
-                    plugin="tensorrt_engine_node::TensorRTEngineNode",
+                    plugin="engine_interface::EngineInterfaceNode",
                     parameters=[
                         {
+                            "engine_plugin_package": "tensorrt_engine",
+                            "engine_type": "engine_interface::TRTEngine",
                             "model_names": "encoder,decoder1,decoder2",
                             "encoder.model_path": get_package_share_directory("tensorrt_engine")
-                            + "/models/encoder_local.trt",
+                            + "/models/gat/encoder_local.trt",
                             "encoder.input_dimensions": "1,1,5",
                             "encoder.output_dimensions": "1,1,16",
                             "encoder.tensor_type": "fp32",
                             "decoder1.model_path": get_package_share_directory(
                                 "tensorrt_engine"
                             )
-                            + "/models/multi_head_gat_layer1.trt",
+                            + "/models/gat/multi_head_gat_layer1.trt",
                             "decoder1.input_dimensions": "1,1,16;1,4,16;1,1,16",
                             "decoder1.output_dimensions": "1,1,16",
                             "decoder1.tensor_type": "fp32",
                             "decoder2.model_path": get_package_share_directory(
                                 "tensorrt_engine"
                             )
-                            + "/models/multi_head_gat_layer2.trt",
+                            + "/models/gat/multi_head_gat_layer2.trt",
                             "decoder2.input_dimensions": "1,16;1,4,16;1,1,16",
                             "decoder2.output_dimensions": "1,1,5",
                             "decoder2.tensor_type": "fp32",

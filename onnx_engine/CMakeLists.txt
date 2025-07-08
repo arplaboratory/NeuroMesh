@@ -51,22 +51,25 @@ target_include_directories(onnx_engine PUBLIC
   $<INSTALL_INTERFACE:include>
 )
 
-set_target_properties(onnx_engine PROPERTIES
-  COMPILE_DEFINITIONS "COMPOSITION_BUILDING_DLL"
-)
-
+target_link_libraries(onnx_engine ${ONNXRUNTIME_LIBRARIES})
+# target_link_libraries(onnx_engine
+#   ${onnxruntime_LIBRARIES}
+# )
+# set_target_properties(onnx_engine PROPERTIES
+#   COMPILE_DEFINITIONS "COMPOSITION_BUILDING_DLL"
+# )
 ament_target_dependencies(
   onnx_engine
   ${dependencies}
 )
 
-target_link_libraries(onnx_engine ${ONNXRUNTIME_LIBRARIES})
-# target_link_libraries(onnx_engine
-#   ${onnxruntime_LIBRARIES}
-# )
+install(FILES plugin_description.xml
+  DESTINATION share/${PROJECT_NAME})
+pluginlib_export_plugin_description_file(engine_interface plugin_description.xml)
 
 install(TARGETS
   onnx_engine
+  EXPORT export_${PROJECT_NAME}
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin
@@ -82,6 +85,7 @@ install(FILES plugin_description.xml
 
 ament_export_include_directories(include)
 ament_export_libraries(onnx_engine)
+ament_export_targets(export_${PROJECT_NAME})
 ament_export_dependencies(
   ${dependencies}
 )
