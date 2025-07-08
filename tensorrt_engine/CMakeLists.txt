@@ -26,6 +26,7 @@ set (dependencies
   "neuromesh_interfaces"
   "rclcpp_components"
   "engine_interface"
+  "pluginlib"
 )
 
 # find dependencies
@@ -41,20 +42,29 @@ include_directories(include)
 add_library(tensorrt_engine SHARED
   src/trt_engine_modified.cpp)
 
-set_target_properties(tensorrt_engine PROPERTIES
-  COMPILE_DEFINITIONS "COMPOSITION_BUILDING_DLL"
-)
+target_include_directories(tensorrt_engine PUBLIC 
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>
+  ${OpenCV_INCLUDE_DIRS} ${CUDA_INCLUDE_DIRS})
+
+
+target_link_libraries(tensorrt_engine ${OpenCV_LIBS} ${CUDA_LIBRARIES} nvinfer nvonnxparser nvinfer_plugin cudnn)
+# set_target_properties(tensorrt_engine PROPERTIES
+#   COMPILE_DEFINITIONS "COMPOSITION_BUILDING_DLL"
+# )
 
 ament_target_dependencies(
   tensorrt_engine
   ${dependencies}
   )
 
-target_include_directories(tensorrt_engine PUBLIC ${OpenCV_INCLUDE_DIRS} ${CUDA_INCLUDE_DIRS} tensorrt)
-target_link_libraries(tensorrt_engine ${OpenCV_LIBS} ${CUDA_LIBRARIES} nvinfer nvonnxparser nvinfer_plugin cudnn)
+install(FILES plugin_description.xml
+  DESTINATION share/${PROJECT_NAME})
+pluginlib_export_plugin_description_file(engine_interface plugin_description.xml)
 
 install(TARGETS
   tensorrt_engine
+  EXPORT export_${PROJECT_NAME}
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin
@@ -66,4 +76,5 @@ install(DIRECTORY models
   DESTINATION share/${PROJECT_NAME})
 
 ament_export_libraries(tensorrt_engine)
+ament_export_targets(export_${PROJECT_NAME})
 ament_package()

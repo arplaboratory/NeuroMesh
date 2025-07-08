@@ -48,7 +48,7 @@ ament_target_dependencies(
   ${dependencies}
 )
 
-rclcpp_components_register_nodes(engine_interface "engine_interface_node::EngineInterfaceNode")
+rclcpp_components_register_nodes(engine_interface "engine_interface::EngineInterfaceNode")
 
  install(TARGETS
   engine_interface

@@ -8,7 +8,7 @@
 namespace engine_interface
 {
 
-class ONNXEngine : public InferenceEngineBase
+class ONNXEngine : public BaseEngine
 {
   public:
     ONNXEngine();

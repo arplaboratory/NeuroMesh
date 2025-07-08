@@ -9,7 +9,7 @@
 
 namespace engine_interface {
 
-class TRTEngine : public InferenceEngineBase 
+class TRTEngine : public BaseEngine 
 {
     public:
         TRTEngine();

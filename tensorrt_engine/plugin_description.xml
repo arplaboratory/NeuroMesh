@@ -1,7 +1,7 @@
-<library path="libtensorrt_engine.so">
-  <class name="engine_interface::TRTEngine"
-         type="engine_interface::TRTEngine"
-         base_class_type="engine_interface::InferenceEngineBase">
+<library path="tensorrt_engine">
+  <class name="engine_interface::TRTEngine" 
+         type="engine_interface::TRTEngine" 
+         base_class_type="engine_interface::BaseEngine">
     <description>TensorRT inference engine plugin</description>
   </class>
 </library>

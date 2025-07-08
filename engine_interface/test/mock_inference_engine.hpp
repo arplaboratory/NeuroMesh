@@ -9,8 +9,8 @@ using ::testing::_;
 
 namespace engine_interface {
 
-// Mock class for InferenceEngineBase
-class MockInferenceEngine : public InferenceEngineBase {
+// Mock class for BaseEngine
+class MockInferenceEngine : public BaseEngine {
 public:
     MOCK_METHOD(bool, loadModel, 
                 (const std::string& model_path, 

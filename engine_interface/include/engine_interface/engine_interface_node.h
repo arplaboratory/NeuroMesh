@@ -22,14 +22,14 @@ class EngineInterfaceNode : public rclcpp::Node {
 public:
     EngineInterfaceNode(
         rclcpp::NodeOptions options, 
-        const std::string& plugin_package = "onnx_engine",
-        const std::string& plugin_class = "engine_interface::ONNXEngine"
+        const std::string& plugin_package = "engine_interface",
+        const std::string& plugin_class = "engine_interface::BaseEngine"
     );
     ~EngineInterfaceNode() override = default;
 
 private:
-    pluginlib::ClassLoader<InferenceEngineBase> engine_loader_;
-    std::shared_ptr<InferenceEngineBase> engine_;
+    pluginlib::ClassLoader<BaseEngine> engine_loader_;
+    std::shared_ptr<BaseEngine> engine_;
 
     rclcpp::Publisher<neuromesh_interfaces::msg::Tensor>::SharedPtr
         tensor_publisher_;
@@ -52,7 +52,7 @@ private:
     std::string tensor_qos_param;
 
     // engine
-    std::unordered_map<std::string, std::shared_ptr<InferenceEngineBase>> engines;
+    std::unordered_map<std::string, std::shared_ptr<BaseEngine>> engines;
     std::unordered_map<std::string, std::vector<uint32_t>> input_lengths;
     std::unordered_map<std::string, std::vector<uint32_t>> output_lengths;
     std::unordered_map<std::string, int> tensor_typelengths;
@@ -74,6 +74,8 @@ private:
     // helper functions
     int tensor_string_to_typelength(std::string input);
     std::vector<std::string> string_to_vector(std::string in);
+    std::vector<uint> string_to_dims_single(std::string in);
+    std::vector<std::vector<uint>> string_to_dims(std::string in);
 
     // Convert string to ROS2 QoS profile
     rmw_qos_profile_t parseQoSString(const std::string &str);

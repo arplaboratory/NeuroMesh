@@ -24,7 +24,7 @@
   <export>
     <build_type>ament_cmake</build_type>
     <rclcpp_components plugin="engine_interface">
-      <class type="engine_node::EngineInterfaceNode" base_class_type="rclcpp::Node">
+      <class type="engine_interface::EngineInterfaceNode" base_class_type="rclcpp::Node">
         <description>Engine Interface Node</description>
       </class>
     </rclcpp_components>
