@@ -35,7 +35,14 @@ bool ONNXEngine::loadModel(const std::string& model_path,
         // input_names_.push_back(session_->GetInputName(i, allocator));
 
         auto type_info = session_->GetInputTypeInfo(i).GetTensorTypeAndShapeInfo();
-        input_shapes_.push_back(type_info.GetShape());
+        auto shape = type_info.GetShape();
+
+        if (i < input_dims.size()) {
+            std::vector<int64_t> new_shape(input_dims[i].begin(), input_dims[i].end());
+            input_shapes_.push_back(new_shape);
+        } else {
+            input_shapes_.push_back(shape);
+        }
     }
 
     for (size_t i = 0; i < num_outputs; ++i) {
@@ -75,6 +82,24 @@ void ONNXEngine::runInference(const std::vector<const void *> &inputTensors,
     //   throw std::runtime_error(
     //       "Number of input and output tensors doesn't match engine bindings");
     // }
+
+    // validate input/output buffer sizes
+    for (size_t i = 0; i < inputSizes.size(); ++i) {
+        size_t expected_size = 1;
+        for (auto d : input_shapes_[i]) expected_size *= d;
+        expected_size *= type_length_;
+        if (inputSizes[i] < static_cast<int>(expected_size)) {
+            throw std::runtime_error("Input buffer size is smaller than expected for input " + std::to_string(i));
+        }
+    }
+    for (size_t i = 0; i < outputSizes.size(); ++i) {
+        size_t expected_size = 1;
+        for (auto d : output_shapes_[i]) expected_size *= d;
+        expected_size *= type_length_;
+        if (outputSizes[i] < static_cast<int>(expected_size)) {
+            throw std::runtime_error("Output buffer size is smaller than expected for output " + std::to_string(i));
+        }
+    } 
 
     std::vector<Ort::Value> ort_inputs;
     Ort::MemoryInfo mem_info = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
