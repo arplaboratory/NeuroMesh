@@ -33,7 +33,9 @@ EngineInterfaceNode::EngineInterfaceNode(
           std::string engine_type = this->declare_parameter(m + ".engine_type", plugin_cls);
           try {
               engines[m] = engine_loader_.createSharedInstance(engine_type);
-              engines[m]->loadModel(model_paths[m], input_dimensions[m], tensor_typelengths[m]);
+              engines[m]->loadModel(model_paths[m], 
+                                    input_dimensions[m], 
+                                    tensor_typelengths[m]);
           } catch (const pluginlib::PluginlibException& ex) {
               RCLCPP_ERROR(this->get_logger(), "Failed to load engine plugin: %s", ex.what());
           }
