@@ -226,29 +226,47 @@ void GATPlannerNeuromeshNode::neighbor_pos_callback(const nav_msgs::msg::Odometr
     current_states_[id].state_vector[5] = 1.0;
 }
 
-neuromesh_interfaces::msg::Tensor GATPlannerNeuromeshNode::calculate_input_features(const std::vector<float>& state_vector) {
+neuromesh_interfaces::msg::Tensor GATPlannerNeuromeshNode::calculate_input_features(const std::vector<float>& state_vector, const std::vector<std::string> neighbors_ids) {
     neuromesh_interfaces::msg::Tensor tensor_msg;
     
     // Set tensor dimensions
-    tensor_msg.shape.dims = {1, static_cast<int64_t>(goal_poses_.size())};
+    tensor_msg.shape.dims = {1, static_cast<int64_t>((1 + goal_poses_.size() + 2)*2)}; // ego robot pos + relative pos to 4 goals + relative pos to 2 neighbors
 
     tensor_msg.data_type = 9; // float32
     
-    std::vector<float> distance_values;
-    for (size_t j = 0; j < goal_poses_.size(); ++j) {
-        // Calculate Euclidean distance
-        float dx = state_vector[0] - goal_poses_[j].position.x;
-        float dy = state_vector[1] - goal_poses_[j].position.y;
+    std::vector<float> input_feature;
+    input_feature.push_back(state_vector[0] / 2.0f);
+    input_feature.push_back(state_vector[1] / 2.0f);
 
-        // Store the actual Euclidean distance
-        distance_values.push_back(dx * dx + dy * dy);
+    // Relative pos to the goals
+    for (size_t j = 0; j < goal_poses_.size(); ++j) {
+        float goal_x = goal_poses_[j].position.x;
+        float goal_y = goal_poses_[j].position.y;
+    
+        float dx = (goal_x - state_vector[0]) / 4.0f; // hard coded normalization by 2*env_bound
+        float dy = (goal_y - state_vector[1]) / 4.0f;
+
+        input_feature.push_back(dx);
+        input_feature.push_back(dy);
+    }
+    // Relative pos to the robots
+    for (size_t n = 0; n < neighbors_ids.size(); ++n) {\
+        float neighbor_x = current_states_[neighbors_ids[n]].state_vector[0];
+        float neighbor_y = current_states_[neighbors_ids[n]].state_vector[1];
+    
+        float dx = (neighbor_x - state_vector[0]) / 4.0f; // hard coded normalization by 2*env_bound
+        float dy = (neighbor_y - state_vector[1]) / 4.0f;
+    
+        // Write into input_feat starting at index 2
+        input_feature.push_back(dx);
+        input_feature.push_back(dy);
     }
 
     // Directly copy float values to tensor data
-    tensor_msg.data.resize(distance_values.size() * sizeof(float));
+    tensor_msg.data.resize(input_feature.size() * sizeof(float));
     std::copy(
-        reinterpret_cast<unsigned char*>(distance_values.data()),
-        reinterpret_cast<unsigned char*>(distance_values.data() + distance_values.size()),
+        reinterpret_cast<unsigned char*>(input_feature.data()),
+        reinterpret_cast<unsigned char*>(input_feature.data() + input_feature.size()),
         tensor_msg.data.begin()
     );
     
@@ -256,10 +274,10 @@ neuromesh_interfaces::msg::Tensor GATPlannerNeuromeshNode::calculate_input_featu
     tensor_msg.data_type = 9;
 
     // Set shape explicitly
-    tensor_msg.shape.dims = {1, static_cast<int>(distance_values.size())};
+    tensor_msg.shape.dims = {1, static_cast<int>(input_feature.size())};
 
     // Optionally set strides
-    tensor_msg.strides = {static_cast<int64_t>(distance_values.size()), 1};
+    tensor_msg.strides = {static_cast<int64_t>(input_feature.size()), 1};
 
     return tensor_msg;
 }
@@ -459,7 +477,7 @@ void GATPlannerNeuromeshNode::run_encoder_cycle() {
         std::vector<std::string> closest_neihgbors_ids = get_closest_neighbors()
         neuromesh_interfaces::msg::Tensor input_features = calculate_input_features(
             std::vector<float>(current_states_[id_].state_vector.begin(), 
-                            current_states_[id_].state_vector.end())
+                            current_states_[id_].state_vector.end(), closest_neihgbors_ids)
         );
 
         auto encoder_now = this->get_clock()->now();
