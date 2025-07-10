@@ -31,11 +31,11 @@ set (dependencies
  "rviz_rendering"
  "rviz_common"
  "std_srvs"
- "arl_mission_maestro"
- "phx_nav_msgs"
+#  "arl_mission_maestro"
+#  "phx_nav_msgs"
  "pcl_conversions"
  "tf2"
-"realsense2_camera_msgs"
+# "realsense2_camera_msgs"
 "message_filters"
  )
 
@@ -148,21 +148,21 @@ ament_target_dependencies(odom_republisher
 rclcpp_components_register_nodes(odom_republisher "odom_republisher::OdomRepublisher")
 
 # starting poses sender node TODO: need to be moved
-add_library(starting_poses_sender SHARED
-  src/starting_poses_sender.cpp)
-set_target_properties(starting_poses_sender PROPERTIES
-  COMPILE_DEFINITIONS "COMPOSITION_BUILDING_DLL"
-)
+# add_library(starting_poses_sender SHARED
+#   src/starting_poses_sender.cpp)
+# set_target_properties(starting_poses_sender PROPERTIES
+#   COMPILE_DEFINITIONS "COMPOSITION_BUILDING_DLL"
+# )
 # Link dependencies
-ament_target_dependencies(starting_poses_sender
-  "rclcpp"
-  "geometry_msgs"
-  "rclcpp_components"
-  "yaml-cpp"
-  "arl_mission_maestro"
-  "phx_nav_msgs"
-)
-rclcpp_components_register_nodes(starting_poses_sender "starting_poses_sender::StartingPosesSender")
+# ament_target_dependencies(starting_poses_sender
+#   "rclcpp"
+#   "geometry_msgs"
+#   "rclcpp_components"
+  # "yaml-cpp"
+  # "arl_mission_maestro"
+  # "phx_nav_msgs"
+# )
+# rclcpp_components_register_nodes(starting_poses_sender "starting_poses_sender::StartingPosesSender")
 
 # Add include folder
 target_include_directories(visualization_node PUBLIC "include/")
@@ -210,7 +210,7 @@ ament_target_dependencies(depth_completion_node
   "PCL"
   "pcl_conversions"
   "message_filters"
-  "realsense2_camera_msgs"
+  # "realsense2_camera_msgs"
 )
 
 target_link_libraries(depth_completion_node
