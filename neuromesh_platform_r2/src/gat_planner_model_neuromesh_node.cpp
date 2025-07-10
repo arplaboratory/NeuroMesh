@@ -382,11 +382,15 @@ void GATPlannerNeuromeshNode::createPosSubscription(std::map<std::string, rclcpp
 
 	RCLCPP_DEBUG(this->get_logger(), "creating subscription for topic %s", topic.c_str());
 
+    auto lambda_callback = [this, id](const nav_msgs::msg::Odometry::SharedPtr msg) {
+        this->neighbor_pos_callback(msg, id);
+    };
+
 	rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr pos_subscription_ = 
 		this->create_subscription<nav_msgs::msg::Odometry>(
 			topic,
 			qos,
-			std::bind(&GATPlannerNeuromeshNode::neighbor_pos_callback, this, std::placeholders::_1, id));
+			lambda_callback);
 
 	pos_subscription_map.insert( {id, pos_subscription_} );
 }
