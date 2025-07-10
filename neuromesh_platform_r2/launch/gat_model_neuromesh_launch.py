@@ -20,6 +20,8 @@ def launch_setup(context):
     odom_republisher = LaunchConfiguration("odom_republisher")
     publish_static_map = LaunchConfiguration("publish_static_map").perform(context)
     planning_frame = LaunchConfiguration("planning_frame")
+    engine_plugin_package = LaunchConfiguration("engine_plugin_package").perform(context)
+    engine_type = LaunchConfiguration("engine_type").perform(context)
 
     launch_list = []
 
@@ -35,6 +37,17 @@ def launch_setup(context):
             complete_agent_list.append(k)
 
     print(f"{name} start positions, x: {start_x}, y: {start_y}")
+
+    if (engine_plugin_package == "tensorrt_engine") and (engine_type == "engine_interface::TRTEngine"):
+        model = "trt"
+    elif (engine_plugin_package == "onnx_engine") and (
+        engine_type == "engine_interface::ONNXEngine"
+    ):
+        model = "onnx"
+    else:
+        raise ValueError(
+            f"Invalid engine_plugin_package {engine_plugin_package} or engine_type {engine_type}"
+        )
 
     tf2_static_pub = Node(
         package="tf2_ros",
@@ -102,36 +115,25 @@ def launch_setup(context):
             plugin="engine_interface::EngineInterfaceNode",
             parameters=[
                 {
-                    # "engine_plugin_package": "tensorrt_engine",
-                    # "engine_type": "engine_interface::TRTEngine",
-                    "engine_plugin_package": "onnx_engine",
-                    "engine_type": "engine_interface::ONNXEngine",
+                    "engine_type": engine_type,
                     "model_names": "encoder,decoder1,decoder2",
-                    "encoder.model_path": get_package_share_directory("onnx_engine")
-                    # + "/models/gat/encoder_local.trt",
-                    + "/models/gat_onnx/encoder.onnx",
+                    "encoder.model_path": get_package_share_directory(engine_plugin_package)
+                    + "/models/gat/encoder." + model,
                     "encoder.input_dimensions": "1,1,5",
                     "encoder.output_dimensions": "1,1,16",
                     "encoder.tensor_type": "fp32",
-                    "decoder1.model_path": get_package_share_directory(
-                        "onnx_engine"
-                    )
-                    # + "/models/gat/multi_head_gat_layer1.trt",
-                    + "/models/gat_onnx/gat_layer1.onnx",
+                    "decoder1.model_path": get_package_share_directory(engine_plugin_package)
+                    + "/models/gat/gat_layer1." + model,
                     "decoder1.input_dimensions": "1,1,16;1,4,16;1,1,16",
                     "decoder1.output_dimensions": "1,1,16",
                     "decoder1.tensor_type": "fp32",
-                    "decoder2.model_path": get_package_share_directory(
-                        "onnx_engine"
-                    )
-                    # + "/models/gat/multi_head_gat_layer2.trt",
-                    + "/models/gat_onnx/gat_layer2.onnx",
+                    "decoder2.model_path": get_package_share_directory(engine_plugin_package)
+                    + "/models/gat/gat_layer2." + model,
                     "decoder2.input_dimensions": "1,16;1,4,16;1,1,16",
                     "decoder2.output_dimensions": "1,1,5",
                     "decoder2.tensor_type": "fp32",
                 }
             ],
-            extra_arguments=[{'--log-level': 'DEBUG'}],
         )
     )
     composable_nodes.append(
@@ -196,30 +198,20 @@ def launch_setup(context):
                     plugin="engine_interface::EngineInterfaceNode",
                     parameters=[
                         {
-                            # "engine_plugin_package": "tensorrt_engine",
-                            # "engine_type": "engine_interface::TRTEngine",
-                            "engine_plugin_package": "onnx_engine",
-                            "engine_type": "engine_interface::ONNXEngine",
+                            "engine_type": engine_type,
                             "model_names": "encoder,decoder1,decoder2",
-                            "encoder.model_path": get_package_share_directory("onnx_engine")
-                            # + "/models/gat/encoder_local.trt",
-                            + "/models/gat_onnx/encoder.onnx",
+                            "encoder.model_path": get_package_share_directory(engine_plugin_package)
+                            + "/models/gat/encoder." + model,
                             "encoder.input_dimensions": "1,1,5",
                             "encoder.output_dimensions": "1,1,16",
                             "encoder.tensor_type": "fp32",
-                            "decoder1.model_path": get_package_share_directory(
-                                "onnx_engine"
-                            )
-                            # + "/models/gat/multi_head_gat_layer1.trt",
-                            + "/models/gat_onnx/gat_layer1.onnx",
+                            "decoder1.model_path": get_package_share_directory(engine_plugin_package)
+                            + "/models/gat/gat_layer1." + model,
                             "decoder1.input_dimensions": "1,1,16;1,4,16;1,1,16",
                             "decoder1.output_dimensions": "1,1,16",
                             "decoder1.tensor_type": "fp32",
-                            "decoder2.model_path": get_package_share_directory(
-                                "onnx_engine"
-                            )
-                            # + "/models/gat/multi_head_gat_layer2.trt",
-                            + "/models/gat_onnx/gat_layer2.onnx",
+                            "decoder2.model_path": get_package_share_directory(engine_plugin_package)
+                            + "/models/gat/gat_layer2." + model,
                             "decoder2.input_dimensions": "1,16;1,4,16;1,1,16",
                             "decoder2.output_dimensions": "1,1,5",
                             "decoder2.tensor_type": "fp32",
@@ -331,6 +323,20 @@ def generate_launch_description():
             "Whether or not to start the sekhmet republisher needed for < 5 robots"
         ),
     )
+    engine_plugin_package_arg = DeclareLaunchArgument(
+        name="engine_plugin_package",
+        default_value="onnx_engine",
+        description=(
+            "The package containing the engine plugin to use, e.g. tensorrt_engine or onnx_engine"
+        ),
+    )
+    engine_type_arg = DeclareLaunchArgument(
+        name="engine_type",
+        default_value="engine_interface::ONNXEngine",
+        description=(
+            "The type of engine to use, e.g. engine_interface::TRTEngine or engine_interface::ONNXEngine"
+        ),
+    )
 
     opaque_function_action = OpaqueFunction(function=launch_setup)
 
@@ -345,6 +351,8 @@ def generate_launch_description():
             publish_static_map_arg,
             odom_republisher_arg,
             planning_frame_arg,
+            engine_plugin_package_arg,
+            engine_type_arg,
             opaque_function_action,
         ]
     )
