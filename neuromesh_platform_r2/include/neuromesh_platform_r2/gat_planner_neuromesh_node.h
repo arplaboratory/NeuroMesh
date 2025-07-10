@@ -93,7 +93,7 @@ protected:
 
   // Calculate input features
   neuromesh_interfaces::msg::Tensor
-  calculate_input_features(const std::vector<float> &state_vector);
+  calculate_input_features(const std::vector<float> &state_vector, const std::vector<std::string> neighbors_ids);
   std::vector<std::string> get_closest_neighbors();
 
   // Set encoder status as to whether or not it's already been run this cycle
