@@ -31,6 +31,7 @@ GATPlannerNeuromeshNode :: GATPlannerNeuromeshNode(const rclcpp::NodeOptions &op
 	this->get_parameter("decoder_model1_name", decoder_model1_name_);
     this->get_parameter("decoder_model2_name", decoder_model2_name_);
 	this->get_parameter("topic_prefix", topic_prefix_);
+    this->get_parameter("pos_topic_prefix", pos_topic_prefix_);
 	this->get_parameter("output_topic", output_topic_);
     this->get_parameter("planning_frame", planning_frame_);
 	this->get_parameter("decoder_cycle_length", decoder_cycle_length_);
@@ -88,6 +89,7 @@ GATPlannerNeuromeshNode :: GATPlannerNeuromeshNode(const rclcpp::NodeOptions &op
 		RCLCPP_DEBUG(this->get_logger(), "Going through all agents to create subscriptions");
 		RCLCPP_DEBUG(this->get_logger(), "Id: %s", id.c_str());
 		this->createSubscription(feature_subscriptions_, id, feature_qos);
+        this->createPosSubscription(pos_subscriptions_, id, feature_qos);
         this->createGNNSubscription(gnn_subscriptions_, id, feature_qos);
 	}
 
