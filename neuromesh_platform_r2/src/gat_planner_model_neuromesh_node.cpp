@@ -78,9 +78,9 @@ GATPlannerNeuromeshNode :: GATPlannerNeuromeshNode(const rclcpp::NodeOptions &op
     }
     current_states_.insert(std::pair(id_, tmp));
 
-    for (const auto& id : all_agents) {
-        current_states_.emplace(id, tmp);
-    }
+    // for (const auto& id : all_agents) {
+    //     current_states_.emplace(id, tmp);
+    // }
 
 	available_agents = all_agents; 
 
@@ -198,6 +198,12 @@ void GATPlannerNeuromeshNode::pos_callback(const nav_msgs::msg::Odometry::Shared
 }
 
 void GATPlannerNeuromeshNode::neighbor_pos_callback(const nav_msgs::msg::Odometry::SharedPtr msg, const std::string &id) {
+    // if empty key, initialize state_vector
+    auto& state = current_states_[id];
+    if (state.state_vector.size() != 6) {
+        state.state_vector.resize(6, 0.0);
+    }
+
     current_states_[id].state_vector[0] = msg->pose.pose.position.x;
     current_states_[id].state_vector[1] = msg->pose.pose.position.y;
 
@@ -210,7 +216,6 @@ void GATPlannerNeuromeshNode::neighbor_pos_callback(const nav_msgs::msg::Odometr
 
 neuromesh_interfaces::msg::Tensor GATPlannerNeuromeshNode::calculate_input_features(const std::vector<float>& state_vector, const std::vector<std::string> neighbors_ids) {
     neuromesh_interfaces::msg::Tensor tensor_msg;
-    
     // Set tensor dimensions
     tensor_msg.shape.dims = {1, static_cast<int64_t>((1 + goal_poses_.size() + 2)*2)}; // ego robot pos + relative pos to 4 goals + relative pos to 2 neighbors
 
@@ -456,26 +461,30 @@ std::set<std::string> GATPlannerNeuromeshNode::splitAgentString(std::string str)
 
 void GATPlannerNeuromeshNode::run_encoder_cycle() {
     // Run the encoder on all feature vectors
-    if (fresh_encoder_cycle && !current_states_.empty() && pos_callback_complete && !goal_poses_.empty() && !waypoint_cmd_sent_) {
+    // RCLCPP_INFO(this->get_logger(), "current_states_ size = %d", current_states_.size());
+    if (fresh_encoder_cycle && current_states_.size()==4 && pos_callback_complete && !goal_poses_.empty() && !waypoint_cmd_sent_) {
         fresh_encoder_cycle = false;
         startClock("encoder_inference");
 
         // TO CHANGE
-        std::vector<std::string> closest_neihgbors_ids = get_closest_neighbors();
+        std::vector<std::string> closest_neighbors_ids = get_closest_neighbors();
         neuromesh_interfaces::msg::Tensor input_features = calculate_input_features(
             std::vector<float>(current_states_[id_].state_vector.begin(), 
-                            current_states_[id_].state_vector.end()), closest_neihgbors_ids
+                            current_states_[id_].state_vector.end()), closest_neighbors_ids
         );
-        // std::ostringstream oss;
-        // oss << "[";
-        // for (size_t i = 0; i < closest_neighbors_ids.size(); ++i) {
-        //     oss << closest_neighbors_ids[i];
-        //     if (i != closest_neighbors_ids.size() - 1) {
-        //         oss << ", ";
-        //     }
-        // }
-        // oss << "]";
-        // RCLCPP_INFO(this->get_logger(), "Closest neighbors: %s", oss.str().c_str());
+        size_t num_floats = input_features.data.size() / sizeof(float);
+        const float* float_data = reinterpret_cast<const float*>(input_features.data.data());
+
+        std::ostringstream oss;
+        oss << "input_features: [";
+        for (size_t i = 0; i < num_floats; ++i) {
+            oss << float_data[i];
+            if (i < num_floats - 1)
+                oss << ", ";
+        }
+        oss << "]";
+
+        RCLCPP_INFO(this->get_logger(), "input features = %s", oss.str().c_str());
 
         auto encoder_now = this->get_clock()->now();
         RCLCPP_INFO(this->get_logger(), "Performing inference");
