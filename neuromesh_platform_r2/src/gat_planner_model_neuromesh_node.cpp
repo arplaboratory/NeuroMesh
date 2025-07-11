@@ -181,18 +181,8 @@ void GATPlannerNeuromeshNode::pos_callback(const nav_msgs::msg::Odometry::Shared
     // Parse position data
     pos_callback_complete = true;
 
-    nav_msgs::msg::Odometry rel_odom = *msg;
-    geometry_msgs::msg::TransformStamped transformStamped;
-    try {
-        transformStamped = tf_buffer_->lookupTransform(planning_frame_, rel_odom.header.frame_id, rclcpp::Time(0));
-    } catch (tf2::TransformException &ex) {
-        RCLCPP_ERROR(this->get_logger(), "Transform error: %s", ex.what());
-        return;
-    }
-    tf2::doTransform(rel_odom.pose.pose, rel_odom.pose.pose, transformStamped);
-
-    current_states_[id_].state_vector[0] = rel_odom.pose.pose.position.x;
-    current_states_[id_].state_vector[1] = rel_odom.pose.pose.position.y;
+    current_states_[id_].state_vector[0] = msg->pose.pose.position.x;
+    current_states_[id_].state_vector[1] = msg->pose.pose.position.y;
 
     // Set orientation to [0, 0, 0, 1]
     current_states_[id_].state_vector[2] = 0.0;
@@ -208,18 +198,8 @@ void GATPlannerNeuromeshNode::pos_callback(const nav_msgs::msg::Odometry::Shared
 }
 
 void GATPlannerNeuromeshNode::neighbor_pos_callback(const nav_msgs::msg::Odometry::SharedPtr msg, const std::string &id) {
-    nav_msgs::msg::Odometry rel_odom = *msg;
-    geometry_msgs::msg::TransformStamped transformStamped;
-    try {
-        transformStamped = tf_buffer_->lookupTransform(planning_frame_, rel_odom.header.frame_id, rclcpp::Time(0));
-    } catch (tf2::TransformException &ex) {
-        RCLCPP_ERROR(this->get_logger(), "Transform error: %s", ex.what());
-        return;
-    }
-    tf2::doTransform(rel_odom.pose.pose, rel_odom.pose.pose, transformStamped);
-
-    current_states_[id].state_vector[0] = rel_odom.pose.pose.position.x;
-    current_states_[id].state_vector[1] = rel_odom.pose.pose.position.y;
+    current_states_[id].state_vector[0] = msg->pose.pose.position.x;
+    current_states_[id].state_vector[1] = msg->pose.pose.position.y;
 
     // Set orientation to [0, 0, 0, 1]
     current_states_[id].state_vector[2] = 0.0;
@@ -486,9 +466,19 @@ void GATPlannerNeuromeshNode::run_encoder_cycle() {
             std::vector<float>(current_states_[id_].state_vector.begin(), 
                             current_states_[id_].state_vector.end()), closest_neihgbors_ids
         );
+        // std::ostringstream oss;
+        // oss << "[";
+        // for (size_t i = 0; i < closest_neighbors_ids.size(); ++i) {
+        //     oss << closest_neighbors_ids[i];
+        //     if (i != closest_neighbors_ids.size() - 1) {
+        //         oss << ", ";
+        //     }
+        // }
+        // oss << "]";
+        // RCLCPP_INFO(this->get_logger(), "Closest neighbors: %s", oss.str().c_str());
 
         auto encoder_now = this->get_clock()->now();
-        RCLCPP_DEBUG(this->get_logger(), "Performing inference");
+        RCLCPP_INFO(this->get_logger(), "Performing inference");
         encoder_result = performInference(encoder_model_name_, {input_features});
         auto encoder_end = this->get_clock()->now();
 
