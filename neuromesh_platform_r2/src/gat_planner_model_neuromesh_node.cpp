@@ -484,10 +484,10 @@ void GATPlannerNeuromeshNode::run_encoder_cycle() {
         }
         oss << "]";
 
-        RCLCPP_INFO(this->get_logger(), "input features = %s", oss.str().c_str());
+        // RCLCPP_INFO(this->get_logger(), "input features = %s", oss.str().c_str());
 
         auto encoder_now = this->get_clock()->now();
-        RCLCPP_INFO(this->get_logger(), "Performing inference");
+        // RCLCPP_INFO(this->get_logger(), "Performing inference");
         encoder_result = performInference(encoder_model_name_, {input_features});
         auto encoder_end = this->get_clock()->now();
 
@@ -496,6 +496,7 @@ void GATPlannerNeuromeshNode::run_encoder_cycle() {
 
     // Keep publishing features to others
     if (!fresh_encoder_cycle && encoder_result.valid()) {
+        RCLCPP_INFO(this->get_logger(), "I am here");
         auto encoder_status = encoder_result.wait_for(std::chrono::milliseconds(0));
         if (encoder_status == std::future_status::ready) {
             stopClock("encoder_inference");
@@ -521,8 +522,7 @@ void GATPlannerNeuromeshNode::run_encoder_cycle() {
             }
             ss << "]";
 
-            RCLCPP_DEBUG_STREAM(this->get_logger(), "Encoder features output: " << "\n Size: " << size
-                                                             << "\n Output: " << ss.str());
+            RCLCPP_INFO(this->get_logger(), "Encoder features output:\n Size: %zu\n Output: %s", size, ss.str().c_str());
                                                 
             neuromesh_interfaces::msg::Feature feature_msg = buildFeatureMessage(*feature_tensor.get());
             
