@@ -121,6 +121,7 @@ rclcpp_components_register_nodes(control_implementation "ControlneuromeshNode::C
 add_library(gat_example SHARED
  src/gat_model_implementation.cpp
  src/gat_model_neuromesh_node.cpp
+ src/gat_planner_model_implementation.cpp
  src/gat_planner_model_neuromesh_node.cpp)
 set_target_properties(gat_example PROPERTIES
  COMPILE_DEFINITIONS "COMPOSITION_BUILDING_DLL"
@@ -131,7 +132,7 @@ ament_target_dependencies(gat_example
 target_link_libraries(gat_example ${YAML_CPP_LIBRARIES})
 rclcpp_components_register_nodes(gat_example 
   "GATneuromeshNode::GATImplementation"
-  "GATPlannerNeuromeshNode::GATImplementation")
+  "GATPlannerNeuromeshNode::GATPlannerImplementation")
 
 # odom_republisher
 add_library(odom_republisher SHARED
@@ -256,6 +257,7 @@ install(FILES
   launch/dust3r_model_neuromesh_launch.py
   launch/vggt_model_neuromesh_launch.py
   launch/gat_model_neuromesh_launch.py
+  launch/gat_planner_model_neuromesh_launch.py
   launch/depth_completion_launch.py
   DESTINATION share/${PROJECT_NAME}/launch
 )
