@@ -1,5 +1,7 @@
 #include "neuromesh_platform_r2/gat_neuromesh_node.h"
+#include "service_adapters/adapter_factory.hpp"
 #include "rclcpp/rclcpp.hpp"
+#include "types/navigation_goal.hpp"
 #include "chrono"
 
 namespace GATneuromeshNode {
@@ -24,6 +26,7 @@ GATneuromeshNode :: GATneuromeshNode(const rclcpp::NodeOptions &options): Node("
 	this->declare_parameter<bool>("ints_to_floats", true);
     this->declare_parameter<std::string>("goal_poses_yaml_file", "goal_poses.yaml");
     this->declare_parameter<double>("goals_sending_delay", 10.0);
+    this->declare_parameter<std::string>("service_adapter_type", "MissionMaestro");
 
 	// Get node parameters
 	this->get_parameter("encoder_model_name", encoder_model_name_);
@@ -43,6 +46,7 @@ GATneuromeshNode :: GATneuromeshNode(const rclcpp::NodeOptions &options): Node("
 	this->get_parameter("to_nchw", to_nchw_);
     this->get_parameter("goal_poses_yaml_file", goal_poses_yaml_file);
     this->get_parameter("goals_sending_delay", goals_sending_delay_);
+    this->get_parameter("service_adapter_type", service_adapter_type_);
 
 	auto feature_qos = rclcpp::QoS(rclcpp::KeepLast(10), parseQoSString(features_qos_profile_));
 	auto output_qos = rclcpp::QoS(rclcpp::KeepLast(10), parseQoSString(output_qos_profile_));
@@ -579,97 +583,19 @@ void GATneuromeshNode::prepare_second_stage_decoding() {
                     float max_prob, next;
                     size_t size = second_decoder_result_tensor->data.size();
                     std::memcpy(&max_prob, &second_decoder_result_tensor->data[0], sizeof(float));
+
+                    // get registry to list all service adapters
                     
-                    // std::stringstream ss;
-                    // ss << "[" << std::fixed << std::setprecision(2) << max_prob;
-                    // for (size_t i = 4; i < size; i +=4) {
-                    //     if (i + 3 < size)
-                    //     {
-                    //         std::memcpy(&next, &second_decoder_result_tensor->data[i], sizeof(float));
-                    //         ss << " " << next << " ";
-                    //         if (((i/4) % 5) == 0 ){
-                    //             ss << "\n";
-                    //         }
-                    //         if (next > max_prob) {
-                    //             max_prob = next;
-                    //             max_prob_index = i/4;
-                    //         }
-                    //     }
-                    // }
-                    // ss << "]";
-                    // RCLCPP_INFO_STREAM(this->get_logger(), "Second Decoder final output: " << second_decoder_result_tensor->data_type 
-                    //                                         << "\n Size: " << size
-                    //                                         << "\n Output: " << ss.str());
+                    goal_adapter_ = AdapterFactory::create(service_adapter_type_, this->shared_from_this());
+                    if (!goal_adapter_) {
+                        RCLCPP_ERROR(this->get_logger(), "Failed to create service adapter of type '%s'", service_adapter_type_.c_str());
+                    }
 
-                    // Create and publish PoseStamped message
-                    geometry_msgs::msg::PoseStamped pose_msg;
-                    pose_msg.header.stamp = this->now();
-                    pose_msg.header.frame_id = "map";  // Adjust frame_id as needed
-
-                    pose_msg.pose = goal_poses_[max_prob_index];
-
-                    RCLCPP_DEBUG(this->get_logger(), "Second Decoder inference completed and published");
-
-                    YAML::Node yaml_string;
-                    yaml_string["version"] = 2.0;
-                    yaml_string["frame_id"] = planning_frame_;
-
-                    // Create a waypoints sequence node
-                    yaml_string["waypoints"] = YAML::Node(YAML::NodeType::Sequence);
-
-                    // Create waypoint node
-                    YAML::Node wp_node;
-                    std::vector<float> pose_data{ 
-                        pose_msg.pose.position.x, 
-                        pose_msg.pose.position.y, 
-                        pose_msg.pose.position.z,
-                    };
-
-                    wp_node["name"] = "waypoint1";
-                    wp_node["pose"] = pose_data;
-                    wp_node["pose"].SetStyle(YAML::EmitterStyle::Flow);
-                    wp_node["radius"] = 2.0;
-
-                    // Add waypoint to the sequence
-                    yaml_string["waypoints"].push_back(wp_node);
-
-                    std::stringstream pose_string;
-                    pose_string << yaml_string;
-
-                    // Publish the PoseStamped message
-                    // second_decoder_result_publisher_->publish(pose_msg);
-
-                    // auto waypoint_yaml = std::make_shared<arl_mission_maestro::srv::MaestroMissionYaml::Request>();
-                    // auto waypoint_command = std::make_shared<arl_mission_maestro::srv::MaestroCommand::Request>();
-                    
-                    // waypoint_yaml->yaml_as_string = pose_string.str();
-                    // waypoint_command->command = 0;
-
-                    // if (!waypoint_yaml_request->wait_for_service(std::chrono::seconds(10)) && !waypoint_cmd_sent_) {
-                    //     RCLCPP_ERROR(this->get_logger(), "Waypoint yaml client not reachable via service.");
-                    // }
-                    // auto waypoint_yaml_result = waypoint_yaml_request->async_send_request(waypoint_yaml);
-
-                    // if (!waypoint_command_request->wait_for_service(std::chrono::seconds(10)) && !waypoint_cmd_sent_) {
-                    //     RCLCPP_ERROR(this->get_logger(), "Waypoint command client not reachable via service.");
-                    // }
-                    // auto waypoint_command_result = waypoint_command_request->async_send_request(waypoint_command);
-
-                    // // Send again in case it fails
-                    // auto waypoint_command_result_2 = waypoint_command_request->async_send_request(waypoint_command);
-
-                    // // One more time
-                    // auto waypoint_command_result_3 = waypoint_command_request->async_send_request(waypoint_command);
-
-                    // // TODO: this is not the correct way to check, we need to verify with
-                    // // the actual response from the navigation planners.
-                    // if (waypoint_command_result.get()->success) {
-                    //     RCLCPP_INFO(this->get_logger(), "Waypoint command sent successfully.");
-                    //     waypoint_cmd_sent_ = true;
-                    // } else {
-                    //     RCLCPP_ERROR(this->get_logger(), "Failed to send waypoint command.");
-                    // }
-                    
+                    NavigationGoal goal;
+                    goal.x = goal_poses_[max_prob_index].position.x;
+                    goal.y = goal_poses_[max_prob_index].position.y;
+                    goal.planning_frame = planning_frame_;
+                    goal_adapter_->sendGoal(goal);
                 }
             }
         }

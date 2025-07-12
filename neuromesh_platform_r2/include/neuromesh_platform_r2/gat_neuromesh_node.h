@@ -25,6 +25,9 @@
 #include <tf2_ros/buffer.h>
 #include <tf2_ros/transform_listener.h>
 
+#include "service_adapters/adapter_factory.hpp"
+#include "types/navigation_goal.hpp"
+
 namespace GATneuromeshNode {
 class GATneuromeshNode : public rclcpp::Node {
   // FUNCTIONS
@@ -190,6 +193,7 @@ protected:
   neuromesh_interfaces::msg::Tensor encoder_output_tensor;
   std::string goal_poses_yaml_file;
   std::string planning_frame_;
+  std::string service_adapter_type_;
 
   std::map<std::string, neuromesh_interfaces::msg::StateVector> current_states_;
   std::map<std::string, neuromesh_interfaces::msg::Feature::SharedPtr>
@@ -202,6 +206,8 @@ protected:
 
   std::future<std::vector<std::shared_ptr<neuromesh_interfaces::msg::Tensor>>>
       second_decoder_result_future;
+
+  std::shared_ptr<ServiceInterface> goal_adapter_;    
 
   std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
   std::shared_ptr<tf2_ros::TransformListener> tf_listener_;

@@ -3,8 +3,6 @@
 
 #include "rclcpp/rclcpp.hpp"
 
-// #include "arl_mission_maestro/srv/maestro_command.hpp"
-// #include "arl_mission_maestro/srv/maestro_mission_yaml.hpp"
 #include "geometry_msgs/msg/pose.hpp"
 #include "nav_msgs/msg/odometry.hpp"
 #include "neuromesh_interfaces/msg/comm_message.hpp"
@@ -24,6 +22,9 @@
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <tf2_ros/buffer.h>
 #include <tf2_ros/transform_listener.h>
+
+#include "service_adapters/adapter_factory.hpp"
+#include "types/navigation_goal.hpp"
 
 namespace GATPlannerNeuromeshNode {
 class GATPlannerNeuromeshNode : public rclcpp::Node {
@@ -166,10 +167,9 @@ protected:
       gnn_result_subscriber_;
   rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr
       second_decoder_result_publisher_;
-//   rclcpp::Client<arl_mission_maestro::srv::MaestroMissionYaml>::SharedPtr
-//       waypoint_yaml_request;
-//   rclcpp::Client<arl_mission_maestro::srv::MaestroCommand>::SharedPtr
-//       waypoint_command_request;
+
+  std::string service_adapter_type_;
+  std::shared_ptr<ServiceInterface> goal_adapter_;    
 
   // variables for features
   std::map<std::string, neuromesh_interfaces::msg::Feature::SharedPtr>
