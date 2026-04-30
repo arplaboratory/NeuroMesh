@@ -6,20 +6,18 @@ namespace engine_interface {
 
 EngineInterfaceNode::EngineInterfaceNode(
   rclcpp::NodeOptions options,
-  const std::string& plugin_package,
   const std::string& plugin_class
 )
   : Node("EngineInterfaceNode",
     options.allow_undeclared_parameters(true)
                .automatically_declare_parameters_from_overrides(true)),
-    engine_loader_(plugin_package, plugin_class)
+    engine_loader_("engine_interface", plugin_class)
 {
   // set param vars
   this->declare_parameter<std::string>("tensor_qos_profile", "default");
 
   this->get_parameter("model_names", models_param);
   model_names = string_to_vector(models_param);
-  std::string plugin_pkg = this->get_parameter("engine_plugin_package").as_string();
   std::string plugin_cls = this->get_parameter("engine_type").as_string();
 
   for (std::vector<std::string>::iterator it = model_names.begin();

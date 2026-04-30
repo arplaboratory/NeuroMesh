@@ -22,7 +22,6 @@ class EngineInterfaceNode : public rclcpp::Node {
 public:
     EngineInterfaceNode(
         rclcpp::NodeOptions options, 
-        const std::string& plugin_package = "engine_interface",
         const std::string& plugin_class = "engine_interface::BaseEngine"
     );
     ~EngineInterfaceNode() override = default;
