@@ -724,39 +724,6 @@ void GATPlannerNeuromeshNode::prepare_second_stage_decoding() {
 
                     std::stringstream pose_string;
                     pose_string << yaml_string;
-
-                    // Publish the PoseStamped message
-                    // second_decoder_result_publisher_->publish(pose_msg);
-
-
-                    
-                    // waypoint_yaml->yaml_as_string = pose_string.str();
-                    // waypoint_command->command = 0;
-
-                    // if (!waypoint_yaml_request->wait_for_service(std::chrono::seconds(10)) && !waypoint_cmd_sent_) {
-                    //     RCLCPP_ERROR(this->get_logger(), "Waypoint yaml client not reachable via service.");
-                    // }
-                    // auto waypoint_yaml_result = waypoint_yaml_request->async_send_request(waypoint_yaml);
-
-                    // if (!waypoint_command_request->wait_for_service(std::chrono::seconds(10)) && !waypoint_cmd_sent_) {
-                    //     RCLCPP_ERROR(this->get_logger(), "Waypoint command client not reachable via service.");
-                    // }
-                    // auto waypoint_command_result = waypoint_command_request->async_send_request(waypoint_command);
-
-                    // // Send again in case it fails
-                    // auto waypoint_command_result_2 = waypoint_command_request->async_send_request(waypoint_command);
-
-                    // // One more time
-                    // auto waypoint_command_result_3 = waypoint_command_request->async_send_request(waypoint_command);
-
-                    // // TODO: this is not the correct way to check, we need to verify with
-                    // // the actual response from the navigation planners.
-                    // if (waypoint_command_result.get()->success) {
-                    //     RCLCPP_INFO(this->get_logger(), "Waypoint command sent successfully.");
-                    //     waypoint_cmd_sent_ = true;
-                    // } else {
-                    //     RCLCPP_ERROR(this->get_logger(), "Failed to send waypoint command.");
-                    // }
                     
                 }
             }

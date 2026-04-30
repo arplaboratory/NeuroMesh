@@ -2,13 +2,6 @@ cmake_minimum_required(VERSION 3.5)
 project(tensorrt_engine)
 set(CMAKE_BUILD_TYPE Release)
 
-if(BUILD_TESTING)
-  message("Building tests for tensorrt_engine")
-  find_package(ament_cmake_gmock REQUIRED)
-  ament_add_gmock(test_trt_engine test/test_trt_engine.cpp)
-  target_link_libraries(test_trt_engine tensorrt_engine)
-endif()
-
 # Default to C++14
 if(NOT CMAKE_CXX_STANDARD)
   set(CMAKE_CXX_STANDARD 14)
@@ -57,6 +50,13 @@ ament_target_dependencies(
   tensorrt_engine
   ${dependencies}
   )
+
+if(BUILD_TESTING)
+  message("Building tests for tensorrt_engine")
+  find_package(ament_cmake_gmock REQUIRED)
+  ament_add_gmock(test_trt_engine test/test_trt_engine.cpp)
+  target_link_libraries(test_trt_engine tensorrt_engine)
+endif()
 
 install(FILES plugin_description.xml
   DESTINATION share/${PROJECT_NAME})

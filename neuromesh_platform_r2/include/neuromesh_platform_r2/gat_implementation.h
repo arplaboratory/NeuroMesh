@@ -1,26 +1,25 @@
-#ifndef GAT_PLANNER_IMPLEMENTATION_HEADER_H
-#define GAT_PLANNER_IMPLEMENTATION_HEADER_H
+#ifndef GAT_IMPLEMENTATION_HEADER_H
+#define GAT_IMPLEMENTATION_HEADER_H
 
 #include "neuromesh_interfaces/srv/tensor_request.hpp"
-#include "neuromesh_platform_r2/gat_planner_neuromesh_node.h"
+#include "neuromesh_platform_r2/gat_neuromesh_node.h"
 #include "rclcpp/rclcpp.hpp"
-#include <map>
 #include <memory>
 #include <vector>
 
-namespace GATPlannerNeuromeshNode {
-class GATPlannerImplementation : public GATPlannerNeuromeshNode {
+namespace GATneuromeshNode {
+class GATImplementation : public GATneuromeshNode {
 public:
-  GATPlannerImplementation(const rclcpp::NodeOptions &options);
+  GATImplementation(const rclcpp::NodeOptions &options);
 
 protected:
-  // Perform inference
+  // Perform inference via the engine service
   std::future<std::vector<std::shared_ptr<neuromesh_interfaces::msg::Tensor>>>
   performInference(
       const std::string &model_name,
       const std::vector<neuromesh_interfaces::msg::Tensor> &tensors);
 
-  // Build decoder
+  // Build aggregated decoder tensor from per-agent features
   bool buildDecoderTensor(
       std::map<std::string, neuromesh_interfaces::msg::Feature::SharedPtr>
           &agent_features,
@@ -35,5 +34,5 @@ protected:
       tensor_client_;
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr pos_sub_;
 };
-} // namespace GATPlannerNeuromeshNode
+} // namespace GATneuromeshNode
 #endif

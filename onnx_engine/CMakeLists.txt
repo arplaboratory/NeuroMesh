@@ -2,13 +2,6 @@ cmake_minimum_required(VERSION 3.5)
 project(onnx_engine)
 set(CMAKE_BUILD_TYPE Release)
 
-if(BUILD_TESTING)
-  message("Building tests for onnx_engine")
-  find_package(ament_cmake_gmock REQUIRED)
-  ament_add_gmock(test_onnx_engine test/test_onnx_engine.cpp)
-  target_link_libraries(test_onnx_engine onnx_engine)
-endif()
-
 # Default to C++14
 if(NOT CMAKE_CXX_STANDARD)
   set(CMAKE_CXX_STANDARD 14)
@@ -62,6 +55,13 @@ ament_target_dependencies(
   onnx_engine
   ${dependencies}
 )
+
+if(BUILD_TESTING)
+  message("Building tests for onnx_engine")
+  find_package(ament_cmake_gmock REQUIRED)
+  ament_add_gmock(test_onnx_engine test/test_onnx_engine.cpp)
+  target_link_libraries(test_onnx_engine onnx_engine)
+endif()
 
 install(FILES plugin_description.xml
   DESTINATION share/${PROJECT_NAME})

@@ -2,13 +2,6 @@ cmake_minimum_required(VERSION 3.5)
 project(engine_interface)
 set(CMAKE_BUILD_TYPE Release)
 
-if(BUILD_TESTING)
-  message("Building tests for engine_interface")
-  find_package(ament_cmake_gmock REQUIRED)
-  ament_add_gmock(test_engine_interface test/test_engine_interface.cpp)
-  target_link_libraries(test_engine_interface engine_interface)
-endif()
-
 # Default to C++14
 if(NOT CMAKE_CXX_STANDARD)
   set(CMAKE_CXX_STANDARD 14)
@@ -49,6 +42,13 @@ ament_target_dependencies(
 )
 
 rclcpp_components_register_nodes(engine_interface "engine_interface::EngineInterfaceNode")
+
+if(BUILD_TESTING)
+  message("Building tests for engine_interface")
+  find_package(ament_cmake_gmock REQUIRED)
+  ament_add_gmock(test_engine_interface test/test_engine_interface.cpp)
+  target_link_libraries(test_engine_interface engine_interface)
+endif()
 
  install(TARGETS
   engine_interface
