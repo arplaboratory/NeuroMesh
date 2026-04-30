@@ -1,12 +1,42 @@
 #include "tensorrt_engine/trt_engine_modified.h"
-
 #include <cassert>
 #include <fstream>
 #include <iostream>
 #include <memory>
 #include <numeric>
 
+#include <NvInfer.h>
+#include <NvOnnxParser.h>
 #include "NvInferPlugin.h"
+#include <cuda_runtime.h>
+
+namespace engine_interface
+{
+
+class TRTEngine::Impl
+{
+public:
+  Logger logger;
+  std::unique_ptr<nvinfer1::ICudaEngine> engine;
+  std::unique_ptr<nvinfer1::IRuntime> runtime;
+  std::unique_ptr<nvinfer1::IExecutionContext> context;
+  std::vector<void*> bindings;
+
+  Impl() : logger(), engine(nullptr), runtime(nullptr), context(nullptr) {
+    // Initialize the logger
+    logger.log(nvinfer1::ILogger::Severity::kINFO, "TRTEngine Impl initialized.");
+  }
+};
+
+TRTEngine::TRTEngine()
+    : impl_(std::make_unique<Impl>()) {
+}
+
+TRTEngine::~TRTEngine() {
+  for (size_t i = 0; i < impl_->bindings.size(); i++) {
+    cudaFree(impl_->bindings[i]);
+  }
+}
 
 nvinfer1::ICudaEngine *createEngine(const std::string &inputFileName,
                                     nvinfer1::ILogger &logger,
@@ -82,43 +112,39 @@ nvinfer1::ICudaEngine *createEngine(const std::string &inputFileName,
   }
 }
 
-TRTEngine::TRTEngine(std::string model_filename,
-                     std::vector<std::vector<uint>> input_dims, int type_length,
-                     int batchSize) {
+bool TRTEngine::loadModel(const std::string& model_path,
+                     const std::vector<std::vector<uint32_t>>& input_dims, 
+                     int type_length) 
+{
+  impl_->logger.log(nvinfer1::ILogger::Severity::kINFO, "Creating engine ...");
 
-  logger.log(nvinfer1::ILogger::Severity::kINFO, "Creating engine ...");
-
-  runtime.reset(nvinfer1::createInferRuntime(logger));
-  if (!runtime)
+  impl_->runtime.reset(nvinfer1::createInferRuntime(impl_->logger));
+  if (!impl_->runtime)
     throw std::runtime_error("Runtime creation failed!");
 
-  engine.reset(createEngine(model_filename, logger, runtime));
+  impl_->engine.reset(createEngine(model_path, impl_->logger, impl_->runtime));
 
-  if (!engine)
+  if (!impl_->engine)
     throw std::runtime_error("Engine creation failed !");
 
-  logger.log(nvinfer1::ILogger::Severity::kINFO, "Engine created.");
+  impl_->logger.log(nvinfer1::ILogger::Severity::kINFO, "Engine created.");
 
-  context.reset(engine->createExecutionContext());
+  impl_->context.reset(impl_->engine->createExecutionContext());
 
-  const int num_io = engine->getNbIOTensors();
-  bindings.resize(num_io);
+  const int num_io = impl_->engine->getNbIOTensors();
+  impl_->bindings.resize(num_io);
 
   // Alloc cuda memory for IO tensors
   for (int i = 0; i < num_io; ++i) {
-    const char *tensor_name = engine->getIOTensorName(i);
-    nvinfer1::Dims dims = engine->getTensorShape(tensor_name);
+    const char *tensor_name = impl_->engine->getIOTensorName(i);
+    nvinfer1::Dims dims = impl_->engine->getTensorShape(tensor_name);
     size_t size = std::accumulate(dims.d, dims.d + dims.nbDims, 1,
                                   std::multiplies<size_t>());
     // Create CUDA buffer for Tensor
-    cudaMalloc(&bindings[i], size * type_length);
+    cudaMalloc(&impl_->bindings[i], size * type_length);
   }
-}
 
-TRTEngine::~TRTEngine() {
-  for (int i = 0; i < bindings.size(); i++) {
-    cudaFree(bindings[i]);
-  }
+  return true;
 }
 
 void TRTEngine::runInference(const std::vector<const void *> &inputTensors,
@@ -126,15 +152,7 @@ void TRTEngine::runInference(const std::vector<const void *> &inputTensors,
                              std::vector<void *> &outputTensors,
                              const std::vector<int> &outputSizes) {
 
-  /*
-  std::cout << "IN ENGINE: my inputTensors.size() looks like " << inputTensors.size() << std::endl; std::cout << "IN ENGINE: my inputSizes.size() looks like " << inputSizes.size() << std::endl;
-  std::cout << "IN ENGINE: my inputSizes[0] looks like " << inputSizes.at(0) << std::endl;
-
-  std::cout << "IN ENGINE: my outputTensors.size() looks like " << outputTensors.size() << std::endl; std::cout << "IN ENGINE: my outputSizes.size() looks like " << outputSizes.size() << std::endl;
-  std::cout << "IN ENGINE: my outputSizes[0] looks like " << outputSizes.at(0) << std::endl;
-  */
-
-  if (inputTensors.size() + outputTensors.size() != bindings.size()) {
+  if (inputTensors.size() + outputTensors.size() != impl_->bindings.size()) {
     throw std::runtime_error(
         "Number of input and output tensors doesn't match engine bindings");
   }
@@ -145,26 +163,26 @@ void TRTEngine::runInference(const std::vector<const void *> &inputTensors,
 
   // Copy input data to device
   for (size_t i = 0; i < inputTensors.size(); ++i) {
-    cudaMemcpyAsync(bindings[i], inputTensors[i], inputSizes[i],
+    cudaMemcpyAsync(impl_->bindings[i], inputTensors[i], inputSizes[i],
                     cudaMemcpyHostToDevice, stream);
   }
 
   for (size_t i = 0; i < inputTensors.size(); ++i) {
-    const char *tensor_name = engine->getIOTensorName(i);
-    context->setInputTensorAddress(tensor_name, bindings[i]);
+    const char *tensor_name = impl_->engine->getIOTensorName(i);
+    impl_->context->setInputTensorAddress(tensor_name, impl_->bindings[i]);
   }
 
   for (size_t i = 0; i < outputTensors.size(); ++i) {
-    const char *tensor_name = engine->getIOTensorName(inputTensors.size() + i);
-    context->setOutputTensorAddress(tensor_name, bindings[inputTensors.size() + i]);
+    const char *tensor_name = impl_->engine->getIOTensorName(inputTensors.size() + i);
+    impl_->context->setOutputTensorAddress(tensor_name, impl_->bindings[inputTensors.size() + i]);
   }
 
   // Run inference
-  context->enqueueV3(stream);
+  impl_->context->enqueueV3(stream);
 
   // Copy output data to host
   for (size_t i = 0; i < outputTensors.size(); ++i) {
-    cudaMemcpyAsync(outputTensors[i], bindings[inputTensors.size() + i],
+    cudaMemcpyAsync(outputTensors[i], impl_->bindings[inputTensors.size() + i],
                     outputSizes[i], cudaMemcpyDeviceToHost, stream);
   }
 
@@ -172,3 +190,7 @@ void TRTEngine::runInference(const std::vector<const void *> &inputTensors,
 
   cudaStreamDestroy(stream);
 }
+} // namespace engine_interface
+
+#include <pluginlib/class_list_macros.hpp>
+PLUGINLIB_EXPORT_CLASS(engine_interface::TRTEngine, engine_interface::BaseEngine)

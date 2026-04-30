@@ -1,0 +1,23 @@
+voxl2_1:
+  goals:
+    - position:
+        x: -1.0
+        y: -0.65
+
+voxl2_2:
+  goals:
+    - position:
+        x: 0.12
+        y: 0.65
+
+voxl2_5:
+  goals:
+    - position:
+        x: 1.25
+        y: -0.65
+
+voxl2_9:
+  goals:
+    - position:
+        x: 2.32
+        y: 0.65

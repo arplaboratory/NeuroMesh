@@ -1,21 +1,20 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>tensorrt_engine</name>
+  <name>engine_interface</name>
   <version>0.0.0</version>
-  <description>TensorRT engine plugin implementation</description>
-  <maintainer email="77548552+devonsuper@users.noreply.github.com">arpl</maintainer>
+  <description>Engine agnostic interface for distributed inference</description>
+  <maintainer email="long.p.quang.civ@army.mil">Long Quang</maintainer>
   <license>TODO: License declaration</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
   <depend>neuromesh_interfaces</depend>
-  <depend>engine_interface</depend>
+  <depend>rclcpp</depend>
+  <depend>std_msgs</depend>
   <depend>pluginlib</depend>
 
   <build_depend>rclcpp_components</build_depend>
-  <build_depend>tensorrt</build_depend>
-
   <exec_depend>rclcpp_components</exec_depend>
 
   <test_depend>ament_lint_auto</test_depend>
@@ -24,6 +23,10 @@
 
   <export>
     <build_type>ament_cmake</build_type>
-    <pluginlib plugin="plugin_description.xml"/>
+    <rclcpp_components plugin="engine_interface">
+      <class type="engine_interface::EngineInterfaceNode" base_class_type="rclcpp::Node">
+        <description>Engine Interface Node</description>
+      </class>
+    </rclcpp_components>
   </export>
 </package>

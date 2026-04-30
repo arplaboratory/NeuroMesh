@@ -1,83 +1,27 @@
-#include "tensorrt_engine/engine_modified.h"
-#include "tensorrt_engine/trt_engine_modified.h"
-
-#include "cv_bridge/cv_bridge.h"
+#include "engine_interface/engine_interface_node.h"
 
 #include <sstream>
 
-namespace tensorrt_engine_node {
+namespace engine_interface {
 
-std::vector<uint> string_to_dims_single(std::string in) {
-  std::stringstream stream(in);
-  std::string element;
-  std::vector<uint> out;
-
-  while (getline(stream, element, ',')) {
-    out.push_back(std::stoi(element));
-  }
-  return out;
-}
-
-std::vector<std::vector<uint>> string_to_dims(std::string in) {
-  std::stringstream stream(in);
-  std::string element;
-  std::vector<std::vector<uint>> out;
-
-  while (getline(stream, element, ';')) {
-    std::vector<uint> dims = string_to_dims_single(element);
-    out.push_back(dims);
-  }
-  return out;
-}
-
-std::vector<std::string> string_to_vector(std::string in) {
-  std::stringstream stream(in);
-  std::string element;
-
-  std::vector<std::string> out;
-
-  while (getline(stream, element, ',')) {
-    out.push_back(element);
-  }
-  return out;
-}
-
-void TensorRTEngineNode::tensor_request_callback(
-    const std::shared_ptr<neuromesh_interfaces::srv::TensorRequest::Request>
-        request,
-    const std::shared_ptr<neuromesh_interfaces::srv::TensorRequest::Response>
-        response) {
-  auto now = this->get_clock()->now();
-  double timestamp = now.seconds() + now.nanoseconds() / 1e9;
-  RCLCPP_DEBUG(this->get_logger(), "Received service request.");
-  RCLCPP_DEBUG(this->get_logger(), "Time of receiving service call %.9f",
-              timestamp);
-  RCLCPP_DEBUG(this->get_logger(), "Number of input tensors: %zu",
-               request->tensor1.size());
-  for (size_t i = 0; i < request->tensor1.size(); i++) {
-    RCLCPP_DEBUG(this->get_logger(), "Tensor size (%d): %ld", i, (request->tensor1[i]).data.size());
-  }
-
-  std::vector<neuromesh_interfaces::msg::Tensor> input_tensors =
-      request->tensor1;
-  response->tensor2 = execute(request->model_name, input_tensors);
-}
-
-TensorRTEngineNode::TensorRTEngineNode(rclcpp::NodeOptions options)
-    : Node("TensorRTEngineNode",
-           options.allow_undeclared_parameters(true)
-               .automatically_declare_parameters_from_overrides(true)) {
-  // params
-  // this->declare_parameter<std::string>("model_names", ""); //only declared
-  // parameters
+EngineInterfaceNode::EngineInterfaceNode(
+  rclcpp::NodeOptions options,
+  const std::string& plugin_class
+)
+  : Node("EngineInterfaceNode",
+    options.allow_undeclared_parameters(true)
+               .automatically_declare_parameters_from_overrides(true)),
+    engine_loader_("engine_interface", plugin_class)
+{
+  // set param vars
   this->declare_parameter<std::string>("tensor_qos_profile", "default");
 
-  // set param vars
-  this->get_parameter("model_names", models_param); // values separated by comma
+  this->get_parameter("model_names", models_param);
   model_names = string_to_vector(models_param);
+  std::string plugin_cls = this->get_parameter("engine_type").as_string();
 
   for (std::vector<std::string>::iterator it = model_names.begin();
-       it != model_names.end(); it++) {
+        it != model_names.end(); it++) {
     std::string m = *it;
     this->get_parameter(m + ".model_path", model_paths[m]);
     this->get_parameter(m + ".input_dimensions", input_dimensions_strings[m]);
@@ -87,11 +31,11 @@ TensorRTEngineNode::TensorRTEngineNode(rclcpp::NodeOptions options)
     RCLCPP_DEBUG(this->get_logger(), "Loading parameters.");
     RCLCPP_DEBUG(this->get_logger(), "Model Name: %s", m.c_str());
     RCLCPP_DEBUG(this->get_logger(), "Input Dimensions: %s",
-                 input_dimensions_strings[m].c_str());
+                  input_dimensions_strings[m].c_str());
     RCLCPP_DEBUG(this->get_logger(), "Output Dimensions: %s",
-                 output_dimensions_strings[m].c_str());
+                  output_dimensions_strings[m].c_str());
     RCLCPP_DEBUG(this->get_logger(), "Tensor Type: %s",
-                 tensor_type_params[m].c_str());
+                  tensor_type_params[m].c_str());
 
     // here we set default values
     if (!tensor_type_params.count(m)) {
@@ -119,7 +63,6 @@ TensorRTEngineNode::TensorRTEngineNode(rclcpp::NodeOptions options)
     RCLCPP_DEBUG(this->get_logger(), "Getting output dimensions");
     output_dimensions[m] = string_to_dims(output_dimensions_strings[m]);
     RCLCPP_DEBUG(this->get_logger(), "Got output dimensions");
-
     RCLCPP_DEBUG(this->get_logger(), "Getting input lengths");
     input_lengths[m].resize(input_dimensions[m].size());
     for (size_t i = 0; i < input_dimensions[m].size(); ++i) {
@@ -158,42 +101,42 @@ TensorRTEngineNode::TensorRTEngineNode(rclcpp::NodeOptions options)
   // // Publisher and subscriber setup
   tensor_publisher_ = this->create_publisher<neuromesh_interfaces::msg::Tensor>(
       "tensorrt_output", tensor_qos);
-
-  // tensor_subscription_ =
-  // this->create_subscription<neuromesh_interfaces::msg::Tensor>(
-  // 	"tensorrt_input", tensor_qos,
-  // std::bind(&TensorRTEngineNode::tensor_callback, this,
-  // std::placeholders::_1));
-
-  RCLCPP_DEBUG(this->get_logger(), "Creating service");
+  RCLCPP_INFO(this->get_logger(), "Creating service");
   service_ = this->create_service<neuromesh_interfaces::srv::TensorRequest>(
       "tensorrt_request",
-      std::bind(&TensorRTEngineNode::tensor_request_callback, this,
+      std::bind(&EngineInterfaceNode::tensor_request_callback, this,
                 std::placeholders::_1, std::placeholders::_2));
 
   for (std::vector<std::string>::iterator it = model_names.begin();
        it != model_names.end(); it++) {
     std::string m = *it;
-    // initialize engine
-    // TODO try/catch engine creation failure
-    RCLCPP_DEBUG(this->get_logger(), "Resetting engine");
-    engines[m].reset(new TRTEngine(model_paths[m], input_dimensions[m],
-                                   tensor_typelengths[m]));
-    RCLCPP_DEBUG(this->get_logger(), "Engine reset");
+    try {
+        engines[m] = engine_loader_.createSharedInstance(plugin_cls);
+        RCLCPP_INFO(this->get_logger(), "Loading model");
+        engines[m]->loadModel(model_paths[m], 
+                              input_dimensions[m], 
+                              tensor_typelengths[m]);
+    } catch (const pluginlib::PluginlibException& ex) {
+        RCLCPP_ERROR(this->get_logger(), "Failed to load engine plugin: %s", ex.what());
+    }
 
-    if (engines[m].get() == NULL) {
+  if (engines[m].get() == NULL) {
       RCLCPP_ERROR(this->get_logger(), "Failed to initialize engine %s.",
                    m.c_str());
     }
+  
   }
-}
 
-std::vector<neuromesh_interfaces::msg::Tensor> TensorRTEngineNode::execute(
+  RCLCPP_DEBUG(this->get_logger(), "Done loading parameters.");
+
+}
+std::vector<neuromesh_interfaces::msg::Tensor> EngineInterfaceNode::execute(
     const std::string &model,
-    const std::vector<neuromesh_interfaces::msg::Tensor> &tensor_msgs) {
+    const std::vector<neuromesh_interfaces::msg::Tensor> &tensor_msgs) 
+{
   RCLCPP_DEBUG(this->get_logger(), "Execute function for model %s",
                model.c_str());
-
+    
   if (tensor_msgs.empty()) {
     RCLCPP_ERROR(this->get_logger(), "Expected at least 1 input tensor, got 0");
     return {[]() {
@@ -202,7 +145,6 @@ std::vector<neuromesh_interfaces::msg::Tensor> TensorRTEngineNode::execute(
       return t;
     }()};
   }
-
   // Prepare input tensors and sizes
   std::vector<const void *> inputTensors;
   std::vector<int> inputSizes;
@@ -275,9 +217,9 @@ std::vector<neuromesh_interfaces::msg::Tensor> TensorRTEngineNode::execute(
     output_msg.result = 0;
     output_msg.data_type = 9; // float32
     output_msgs.push_back(std::move(output_msg));
-    RCLCPP_DEBUG(this->get_logger(), "I: %d", i);
+    RCLCPP_DEBUG(this->get_logger(), "I: %ld", i);
     RCLCPP_DEBUG(this->get_logger(), "MODEL: %s", model.c_str());
-    RCLCPP_DEBUG(this->get_logger(), "OUTPUT TENSOR: %ld", output_dimensions[model][i]);
+    RCLCPP_DEBUG(this->get_logger(), "OUTPUT TENSOR: %d", output_dimensions[model][i][0]);
   }
 
   RCLCPP_DEBUG(this->get_logger(), "Returning output messages");
@@ -285,7 +227,63 @@ std::vector<neuromesh_interfaces::msg::Tensor> TensorRTEngineNode::execute(
   return output_msgs;
 }
 
-int TensorRTEngineNode::tensor_string_to_typelength(std::string input) {
+void EngineInterfaceNode::tensor_request_callback(
+    const std::shared_ptr<neuromesh_interfaces::srv::TensorRequest::Request>
+        request,
+    const std::shared_ptr<neuromesh_interfaces::srv::TensorRequest::Response>
+        response) {
+  auto now = this->get_clock()->now();
+  double timestamp = now.seconds() + now.nanoseconds() / 1e9;
+  RCLCPP_DEBUG(this->get_logger(), "Received service request.");
+  RCLCPP_DEBUG(this->get_logger(), "Time of receiving service call %.9f",
+              timestamp);
+  RCLCPP_DEBUG(this->get_logger(), "Number of input tensors: %zu",
+               request->tensor1.size());
+  for (size_t i = 0; i < request->tensor1.size(); i++) {
+    RCLCPP_DEBUG(this->get_logger(), "Tensor size (%ld): %ld", i, (request->tensor1[i]).data.size());
+  }
+
+  std::vector<neuromesh_interfaces::msg::Tensor> input_tensors =
+      request->tensor1;
+  response->tensor2 = execute(request->model_name, input_tensors);
+}
+
+std::vector<uint> EngineInterfaceNode::string_to_dims_single(std::string in) {
+  std::stringstream stream(in);
+  std::string element;
+  std::vector<uint> out;
+
+  while (getline(stream, element, ',')) {
+    out.push_back(std::stoi(element));
+  }
+  return out;
+}
+
+std::vector<std::vector<uint>> EngineInterfaceNode::string_to_dims(std::string in) {
+  std::stringstream stream(in);
+  std::string element;
+  std::vector<std::vector<uint>> out;
+
+  while (getline(stream, element, ';')) {
+    std::vector<uint> dims = string_to_dims_single(element);
+    out.push_back(dims);
+  }
+  return out;
+}
+
+std::vector<std::string> EngineInterfaceNode::string_to_vector(std::string in) {
+  std::stringstream stream(in);
+  std::string element;
+
+  std::vector<std::string> out;
+
+  while (getline(stream, element, ',')) {
+    out.push_back(element);
+  }
+  return out;
+}
+
+int EngineInterfaceNode::tensor_string_to_typelength(std::string input) {
 
   if (input == "fp32")
     return 4;
@@ -304,7 +302,7 @@ int TensorRTEngineNode::tensor_string_to_typelength(std::string input) {
 // Convert string to ROS2 QoS profile
 // from
 // https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_nvblox/nvblox_ros_common/src/qos.cpp#L26
-rmw_qos_profile_t TensorRTEngineNode::parseQoSString(const std::string &str) {
+rmw_qos_profile_t EngineInterfaceNode::parseQoSString(const std::string &str) {
   std::string profile = str;
   // Convert to upper case.
   std::transform(profile.begin(), profile.end(), profile.begin(), ::toupper);
@@ -332,7 +330,7 @@ rmw_qos_profile_t TensorRTEngineNode::parseQoSString(const std::string &str) {
                                              << ". Returning profile: DEFAULT");
   return rmw_qos_profile_default;
 }
-} // namespace tensorrt_engine_node
+} // namespace engine_interface
 
 #include "rclcpp_components/register_node_macro.hpp"
-RCLCPP_COMPONENTS_REGISTER_NODE(tensorrt_engine_node::TensorRTEngineNode)
+RCLCPP_COMPONENTS_REGISTER_NODE(engine_interface::EngineInterfaceNode)
