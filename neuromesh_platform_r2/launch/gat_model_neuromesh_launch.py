@@ -102,30 +102,36 @@ def launch_setup(context):
             plugin="engine_interface::EngineInterfaceNode",
             parameters=[
                 {
-                    "engine_plugin_package": "tensorrt_engine",
-                    "engine_type": "engine_interface::TRTEngine",
+                    # "engine_plugin_package": "tensorrt_engine",
+                    # "engine_type": "engine_interface::TRTEngine",
+                    "engine_plugin_package": "onnx_engine",
+                    "engine_type": "engine_interface::ONNXEngine",
                     "model_names": "encoder,decoder1,decoder2",
-                    "encoder.model_path": get_package_share_directory("tensorrt_engine")
-                    + "/models/gat/encoder_local.trt",
+                    "encoder.model_path": get_package_share_directory("onnx_engine")
+                    # + "/models/gat/encoder_local.trt",
+                    + "/models/gat_onnx/encoder.onnx",
                     "encoder.input_dimensions": "1,1,5",
                     "encoder.output_dimensions": "1,1,16",
                     "encoder.tensor_type": "fp32",
                     "decoder1.model_path": get_package_share_directory(
-                        "tensorrt_engine"
+                        "onnx_engine"
                     )
-                    + "/models/gat/multi_head_gat_layer1.trt",
+                    # + "/models/gat/multi_head_gat_layer1.trt",
+                    + "/models/gat_onnx/gat_layer1.onnx",
                     "decoder1.input_dimensions": "1,1,16;1,4,16;1,1,16",
                     "decoder1.output_dimensions": "1,1,16",
                     "decoder1.tensor_type": "fp32",
                     "decoder2.model_path": get_package_share_directory(
-                        "tensorrt_engine"
+                        "onnx_engine"
                     )
-                    + "/models/gat/multi_head_gat_layer2.trt",
+                    # + "/models/gat/multi_head_gat_layer2.trt",
+                    + "/models/gat_onnx/gat_layer2.onnx",
                     "decoder2.input_dimensions": "1,16;1,4,16;1,1,16",
                     "decoder2.output_dimensions": "1,1,5",
                     "decoder2.tensor_type": "fp32",
                 }
             ],
+            extra_arguments=[{'--log-level': 'DEBUG'}],
         )
     )
     composable_nodes.append(
@@ -190,25 +196,30 @@ def launch_setup(context):
                     plugin="engine_interface::EngineInterfaceNode",
                     parameters=[
                         {
-                            "engine_plugin_package": "tensorrt_engine",
-                            "engine_type": "engine_interface::TRTEngine",
+                            # "engine_plugin_package": "tensorrt_engine",
+                            # "engine_type": "engine_interface::TRTEngine",
+                            "engine_plugin_package": "onnx_engine",
+                            "engine_type": "engine_interface::ONNXEngine",
                             "model_names": "encoder,decoder1,decoder2",
-                            "encoder.model_path": get_package_share_directory("tensorrt_engine")
-                            + "/models/gat/encoder_local.trt",
+                            "encoder.model_path": get_package_share_directory("onnx_engine")
+                            # + "/models/gat/encoder_local.trt",
+                            + "/models/gat_onnx/encoder.onnx",
                             "encoder.input_dimensions": "1,1,5",
                             "encoder.output_dimensions": "1,1,16",
                             "encoder.tensor_type": "fp32",
                             "decoder1.model_path": get_package_share_directory(
-                                "tensorrt_engine"
+                                "onnx_engine"
                             )
-                            + "/models/gat/multi_head_gat_layer1.trt",
+                            # + "/models/gat/multi_head_gat_layer1.trt",
+                            + "/models/gat_onnx/gat_layer1.onnx",
                             "decoder1.input_dimensions": "1,1,16;1,4,16;1,1,16",
                             "decoder1.output_dimensions": "1,1,16",
                             "decoder1.tensor_type": "fp32",
                             "decoder2.model_path": get_package_share_directory(
-                                "tensorrt_engine"
+                                "onnx_engine"
                             )
-                            + "/models/gat/multi_head_gat_layer2.trt",
+                            # + "/models/gat/multi_head_gat_layer2.trt",
+                            + "/models/gat_onnx/gat_layer2.onnx",
                             "decoder2.input_dimensions": "1,16;1,4,16;1,1,16",
                             "decoder2.output_dimensions": "1,1,5",
                             "decoder2.tensor_type": "fp32",
@@ -251,10 +262,14 @@ def launch_setup(context):
             package="rclcpp_components",
             executable="component_container",
             composable_node_descriptions=composable_nodes,
+            # prefix="xterm -e gdb --args",
+            # arguments=[
+            #     "--ros-args",
+            #     "--log-level",
+            #     "DEBUG"],
             output="screen",
         )
     )
-
     return launch_list
 
 
