@@ -59,9 +59,6 @@ GATPlannerNeuromeshNode :: GATPlannerNeuromeshNode(const rclcpp::NodeOptions &op
     "second_decoder_result_topic", 10  // topic name and queue size
     );
 
-    // this->waypoint_yaml_request = create_client<arl_mission_maestro::srv::MaestroMissionYaml>("maestro_yaml");
-    // this->waypoint_command_request = create_client<arl_mission_maestro::srv::MaestroCommand>("maestro_command");
-
 	//PLACEHOLDER: update available_agents
 	
 	all_agents = splitAgentString(agents_);
@@ -731,8 +728,7 @@ void GATPlannerNeuromeshNode::prepare_second_stage_decoding() {
                     // Publish the PoseStamped message
                     // second_decoder_result_publisher_->publish(pose_msg);
 
-                    // auto waypoint_yaml = std::make_shared<arl_mission_maestro::srv::MaestroMissionYaml::Request>();
-                    // auto waypoint_command = std::make_shared<arl_mission_maestro::srv::MaestroCommand::Request>();
+
                     
                     // waypoint_yaml->yaml_as_string = pose_string.str();
                     // waypoint_command->command = 0;

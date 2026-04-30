@@ -31,8 +31,6 @@ set (dependencies
  "rviz_rendering"
  "rviz_common"
  "std_srvs"
- "arl_mission_maestro"
- "phx_nav_msgs"
  "pcl_conversions"4
  "realsense2_camera_msgs"
  "message_filters"
@@ -179,8 +177,6 @@ ament_target_dependencies(starting_poses_sender
   "geometry_msgs"
   "rclcpp_components"
   "yaml-cpp"
-  "arl_mission_maestro"
-  "phx_nav_msgs"
 )
 rclcpp_components_register_nodes(starting_poses_sender "starting_poses_sender::StartingPosesSender")
 
