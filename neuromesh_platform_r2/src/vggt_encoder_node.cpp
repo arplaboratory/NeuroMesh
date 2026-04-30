@@ -34,8 +34,8 @@ VggtEncoderNode::VggtEncoderNode(const rclcpp::NodeOptions& options)
     RCLCPP_INFO(this->get_logger(), "Encoder cycle interval: %.2f seconds", encoder_cycle_interval_);
     RCLCPP_INFO(this->get_logger(), "Image dimensions: %dx%d", image_width_, image_height_);
     
-    // Create TensorRT client
-    tensorrt_client_ = this->create_client<neuromesh_interfaces::srv::TensorRequest>("tensorrt_request");
+    // Create TensorRT client for encoder
+    tensorrt_client_ = this->create_client<neuromesh_interfaces::srv::TensorRequest>("tensorrt_request_encoder");
     
     // Wait for TensorRT service
     while (!tensorrt_client_->wait_for_service(std::chrono::seconds(1))) {
