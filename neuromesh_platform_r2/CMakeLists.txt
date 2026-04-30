@@ -35,7 +35,7 @@ set (dependencies
  "phx_nav_msgs"
  "pcl_conversions"4
  "realsense2_camera_msgs"
-  "message_filters"
+ "message_filters"
  )
 
 
@@ -43,8 +43,8 @@ set (dependencies
 find_package(ament_cmake REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 find_package(ZLIB)
-find_package(PCL REQUIRED)
 find_package(OpenCV 4 REQUIRED)
+find_package(PCL REQUIRED)
 find_package(tf2 REQUIRED)
 foreach(dep ${dependencies})
   find_package(${dep} REQUIRED)
@@ -52,7 +52,7 @@ endforeach()
 
 include_directories(include)
 include_directories(
-    include ${EIGEN3_INCLUDE_DIR} ${PCL_INCLUDE_DIRS)
+    include ${EIGEN3_INCLUDE_DIR} ${PCL_INCLUDE_DIRS})
 
 add_executable(visualization_node
   src/visualization_node.cpp
@@ -114,6 +114,7 @@ ament_target_dependencies(control_implementation
   )
 
 target_link_libraries(control_implementation ${YAML_CPP_LIBRARIES})
+
 rclcpp_components_register_nodes(control_implementation "ControlneuromeshNode::ControlImplementation")
 
 # GAT Codes
@@ -143,6 +144,7 @@ ament_target_dependencies(odom_republisher
   "nav_msgs"
   "rclcpp_components"
 )
+
 rclcpp_components_register_nodes(odom_republisher "odom_republisher::OdomRepublisher")
 
 # starting poses sender node TODO: need to be moved

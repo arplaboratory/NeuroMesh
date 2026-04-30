@@ -57,8 +57,8 @@ GATneuromeshNode :: GATneuromeshNode(const rclcpp::NodeOptions &options): Node("
     "second_decoder_result_topic", 10  // topic name and queue size
     );
 
-    this->waypoint_yaml_request = create_client<arl_mission_maestro::srv::MaestroMissionYaml>("maestro_yaml");
-    this->waypoint_command_request = create_client<arl_mission_maestro::srv::MaestroCommand>("maestro_command");
+    // this->waypoint_yaml_request = create_client<arl_mission_maestro::srv::MaestroMissionYaml>("maestro_yaml");
+    // this->waypoint_command_request = create_client<arl_mission_maestro::srv::MaestroCommand>("maestro_command");
 
 	//PLACEHOLDER: update available_agents
 	
@@ -639,36 +639,36 @@ void GATneuromeshNode::prepare_second_stage_decoding() {
                     // Publish the PoseStamped message
                     // second_decoder_result_publisher_->publish(pose_msg);
 
-                    auto waypoint_yaml = std::make_shared<arl_mission_maestro::srv::MaestroMissionYaml::Request>();
-                    auto waypoint_command = std::make_shared<arl_mission_maestro::srv::MaestroCommand::Request>();
+                    // auto waypoint_yaml = std::make_shared<arl_mission_maestro::srv::MaestroMissionYaml::Request>();
+                    // auto waypoint_command = std::make_shared<arl_mission_maestro::srv::MaestroCommand::Request>();
                     
-                    waypoint_yaml->yaml_as_string = pose_string.str();
-                    waypoint_command->command = 0;
+                    // waypoint_yaml->yaml_as_string = pose_string.str();
+                    // waypoint_command->command = 0;
 
-                    if (!waypoint_yaml_request->wait_for_service(std::chrono::seconds(10)) && !waypoint_cmd_sent_) {
-                        RCLCPP_ERROR(this->get_logger(), "Waypoint yaml client not reachable via service.");
-                    }
-                    auto waypoint_yaml_result = waypoint_yaml_request->async_send_request(waypoint_yaml);
+                    // if (!waypoint_yaml_request->wait_for_service(std::chrono::seconds(10)) && !waypoint_cmd_sent_) {
+                    //     RCLCPP_ERROR(this->get_logger(), "Waypoint yaml client not reachable via service.");
+                    // }
+                    // auto waypoint_yaml_result = waypoint_yaml_request->async_send_request(waypoint_yaml);
 
-                    if (!waypoint_command_request->wait_for_service(std::chrono::seconds(10)) && !waypoint_cmd_sent_) {
-                        RCLCPP_ERROR(this->get_logger(), "Waypoint command client not reachable via service.");
-                    }
-                    auto waypoint_command_result = waypoint_command_request->async_send_request(waypoint_command);
+                    // if (!waypoint_command_request->wait_for_service(std::chrono::seconds(10)) && !waypoint_cmd_sent_) {
+                    //     RCLCPP_ERROR(this->get_logger(), "Waypoint command client not reachable via service.");
+                    // }
+                    // auto waypoint_command_result = waypoint_command_request->async_send_request(waypoint_command);
 
-                    // Send again in case it fails
-                    auto waypoint_command_result_2 = waypoint_command_request->async_send_request(waypoint_command);
+                    // // Send again in case it fails
+                    // auto waypoint_command_result_2 = waypoint_command_request->async_send_request(waypoint_command);
 
-                    // One more time
-                    auto waypoint_command_result_3 = waypoint_command_request->async_send_request(waypoint_command);
+                    // // One more time
+                    // auto waypoint_command_result_3 = waypoint_command_request->async_send_request(waypoint_command);
 
-                    // TODO: this is not the correct way to check, we need to verify with
-                    // the actual response from the navigation planners.
-                    if (waypoint_command_result.get()->success) {
-                        RCLCPP_INFO(this->get_logger(), "Waypoint command sent successfully.");
-                        waypoint_cmd_sent_ = true;
-                    } else {
-                        RCLCPP_ERROR(this->get_logger(), "Failed to send waypoint command.");
-                    }
+                    // // TODO: this is not the correct way to check, we need to verify with
+                    // // the actual response from the navigation planners.
+                    // if (waypoint_command_result.get()->success) {
+                    //     RCLCPP_INFO(this->get_logger(), "Waypoint command sent successfully.");
+                    //     waypoint_cmd_sent_ = true;
+                    // } else {
+                    //     RCLCPP_ERROR(this->get_logger(), "Failed to send waypoint command.");
+                    // }
                     
                 }
             }
