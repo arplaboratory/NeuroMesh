@@ -3,4 +3,5 @@ build/*
 .vscode/*
 resources/*
 **/*.trt
-**/*.onnx
+**/*.engine
+**/*.data
