@@ -1,10 +1,10 @@
-#ifndef GAT_neuromesh_NODE_HEADER_H
-#define GAT_neuromesh_NODE_HEADER_H
+#ifndef GAT_planner_neuromesh_NODE_HEADER_H
+#define GAT_planner_neuromesh_NODE_HEADER_H
 
 #include "rclcpp/rclcpp.hpp"
 
-#include "arl_mission_maestro/srv/maestro_command.hpp"
-#include "arl_mission_maestro/srv/maestro_mission_yaml.hpp"
+// #include "arl_mission_maestro/srv/maestro_command.hpp"
+// #include "arl_mission_maestro/srv/maestro_mission_yaml.hpp"
 #include "geometry_msgs/msg/pose.hpp"
 #include "nav_msgs/msg/odometry.hpp"
 #include "neuromesh_interfaces/msg/comm_message.hpp"
@@ -25,12 +25,12 @@
 #include <tf2_ros/buffer.h>
 #include <tf2_ros/transform_listener.h>
 
-namespace GATneuromeshNode {
-class GATneuromeshNode : public rclcpp::Node {
+namespace GATPlannerNeuromeshNode {
+class GATPlannerNeuromeshNode : public rclcpp::Node {
   // FUNCTIONS
 public:
   // Constructor
-  GATneuromeshNode(const rclcpp::NodeOptions &options);
+  GATPlannerNeuromeshNode(const rclcpp::NodeOptions &options);
 
 protected:
   void
@@ -59,6 +59,12 @@ protected:
       std::map<std::string, rclcpp::Subscription<
                                 neuromesh_interfaces::msg::Feature>::SharedPtr>
           &subscription_map,
+      std::string id, rclcpp::QoS qos);
+
+  void createPosSubscription(
+      std::map<std::string, rclcpp::Subscription<
+                                nav_msgs::msg::Odometry>::SharedPtr>
+            &pos_subscription_map,
       std::string id, rclcpp::QoS qos);
 
   // Remove subscription form the feature_subscriptions_ map
@@ -160,10 +166,10 @@ protected:
       gnn_result_subscriber_;
   rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr
       second_decoder_result_publisher_;
-  rclcpp::Client<arl_mission_maestro::srv::MaestroMissionYaml>::SharedPtr
-      waypoint_yaml_request;
-  rclcpp::Client<arl_mission_maestro::srv::MaestroCommand>::SharedPtr
-      waypoint_command_request;
+//   rclcpp::Client<arl_mission_maestro::srv::MaestroMissionYaml>::SharedPtr
+//       waypoint_yaml_request;
+//   rclcpp::Client<arl_mission_maestro::srv::MaestroCommand>::SharedPtr
+//       waypoint_command_request;
 
   // variables for features
   std::map<std::string, neuromesh_interfaces::msg::Feature::SharedPtr>
@@ -173,6 +179,8 @@ protected:
 
   void pos_callback(const nav_msgs::msg::Odometry::SharedPtr msg);
 
+  void neighbor_pos_callback(const nav_msgs::msg::Odometry::SharedPtr msg, const std::string &id);
+
   Eigen::Vector3f quaternion_to_euler(const geometry_msgs::msg::Quaternion &q);
 
   // parameters
@@ -180,6 +188,7 @@ protected:
   std::string decoder_model1_name_;
   std::string decoder_model2_name_;
   std::string topic_prefix_;
+  std::string pos_topic_prefix_;
   std::string output_topic_;
   int decoder_cycle_length_;
   int encoder_cycle_length_;
@@ -210,6 +219,6 @@ protected:
   std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
   std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
 };
-} // namespace GATneuromeshNode
+} // namespace GATPlannerNeuromeshNode
 
 #endif

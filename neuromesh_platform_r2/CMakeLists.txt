@@ -120,7 +120,8 @@ rclcpp_components_register_nodes(control_implementation "ControlneuromeshNode::C
 # GAT Codes
 add_library(gat_example SHARED
  src/gat_model_implementation.cpp
- src/gat_model_neuromesh_node.cpp)
+ src/gat_model_neuromesh_node.cpp
+ src/gat_planner_model_neuromesh_node.cpp)
 set_target_properties(gat_example PROPERTIES
  COMPILE_DEFINITIONS "COMPOSITION_BUILDING_DLL"
 )
@@ -128,7 +129,9 @@ ament_target_dependencies(gat_example
  ${dependencies}
  )
 target_link_libraries(gat_example ${YAML_CPP_LIBRARIES})
-rclcpp_components_register_nodes(gat_example "GATneuromeshNode::GATImplementation")
+rclcpp_components_register_nodes(gat_example 
+  "GATneuromeshNode::GATImplementation"
+  "GATPlannerNeuromeshNode::GATImplementation")
 
 # odom_republisher
 add_library(odom_republisher SHARED
