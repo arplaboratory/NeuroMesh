@@ -33,6 +33,7 @@ set (dependencies
  "std_srvs"
  "arl_mission_maestro"
  "phx_nav_msgs"
+ "pcl_conversions"4
  )
 
 
@@ -40,6 +41,7 @@ set (dependencies
 find_package(ament_cmake REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 find_package(ZLIB)
+find_package(PCL REQUIRED)
 find_package(OpenCV 4 REQUIRED)
 find_package(tf2 REQUIRED)
 foreach(dep ${dependencies})
@@ -48,7 +50,7 @@ endforeach()
 
 include_directories(include)
 include_directories(
-    include ${EIGEN3_INCLUDE_DIR})
+    include ${EIGEN3_INCLUDE_DIR} ${PCL_INCLUDE_DIRS)
 
 add_executable(visualization_node
   src/visualization_node.cpp
@@ -93,6 +95,23 @@ set_target_properties(vggt_example PROPERTIES
 
 target_link_libraries(vggt_example ${YAML_CPP_LIBRARIES})
 rclcpp_components_register_nodes(vggt_example "vggtNode::VggtToyImplementation")
+
+# VGGT Separated Nodes
+add_library(vggt_separated SHARED
+ src/vggt_encoder_node.cpp
+ src/vggt_decoder_node.cpp)
+
+set_target_properties(vggt_separated PROPERTIES
+ COMPILE_DEFINITIONS "COMPOSITION_BUILDING_DLL"
+)
+
+ament_target_dependencies(vggt_separated
+ ${dependencies}
+ )
+
+target_link_libraries(vggt_separated ${YAML_CPP_LIBRARIES} ${PCL_LIBRARIES})
+rclcpp_components_register_nodes(vggt_separated "neuromesh::VggtEncoderNode")
+rclcpp_components_register_nodes(vggt_separated "neuromesh::VggtDecoderNode")
 
 #Control Codes
 add_library(control_implementation SHARED
@@ -205,6 +224,7 @@ install(TARGETS
   dust3r_example
   vggt_example
   gat_example
+  vggt_separated
   #control_implementation
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
@@ -223,6 +243,7 @@ install(FILES
   launch/dust3r_model_neuromesh_launch.py
   launch/vggt_model_neuromesh_launch.py
   launch/gat_model_neuromesh_launch.py
+  launch/vggt_separated_launch.py
   DESTINATION share/${PROJECT_NAME}/launch
 )
 
@@ -232,6 +253,7 @@ install(DIRECTORY config
 install(PROGRAMS 
     scripts/dust3r_model_neuromesh_launch.sh
     scripts/vggt_model_neuromesh_launch.sh
+    scripts/vggt_separated_launch.sh
     DESTINATION share/${PROJECT_NAME})
 
 ament_export_dependencies(rosidl_default_runtime)
