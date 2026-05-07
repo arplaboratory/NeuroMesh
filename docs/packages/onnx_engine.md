@@ -43,7 +43,7 @@ Declared in `plugin_description.xml`:
 
 | Dependency | Notes |
 |---|---|
-| ONNX Runtime v1.10.0 | Must be built from source and installed to `/usr/local` - see [Build Instructions](../build.md#onnx-runtime-required-before-colcon-build-) |
+| ONNX Runtime v1.10.0 | Must be built from source and installed to `/usr/local` - see [Build Instructions](../build.md) |
 | CUDA | Required only for GPU execution provider |
 
 ## Tests

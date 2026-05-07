@@ -11,7 +11,7 @@ improves modularity, and enables better scalability for multi-robot systems.
 
 **Current (Monolithic)**
 
-```{mermaid}
+```mermaid
 graph TD
     subgraph vggt_neuromesh_node
         E[Encoder] --> D[Decoder]
@@ -22,7 +22,7 @@ graph TD
 
 **Proposed**
 
-```{mermaid}
+```mermaid
 graph LR
     subgraph Robot A
         ENC[VggtEncoderNode] -->|features topic| DEC[VggtDecoderNode]
@@ -87,7 +87,7 @@ When assembling the `2 × 1036 × 1024` decoder input, the node:
 1. Always places **self features** at index 0
 2. For each neighbor slot: uses neighbor's features if age < `feature_age_threshold`, otherwise falls back to self features with a warning
 
-```{mermaid}
+```mermaid
 flowchart TD
     START[decoder_timer_callback] --> LOCK[Lock feature_mutex_]
     LOCK --> SELF[Add self features at index 0]

@@ -14,7 +14,11 @@ extensions = [
     "myst_parser",
     "sphinx.ext.napoleon",
     "sphinx.ext.viewcode",
-    "sphinxcontrib.mermaid",
+]
+
+html_js_files = [
+    "mermaid.min.js",
+    "mermaid-init.js",
 ]
 
 myst_enable_extensions = [
@@ -28,6 +32,7 @@ suppress_warnings = [
     "docutils",
     "toc.not_included",
     "ref.ref",
+    "misc.highlighting_failure",
 ]
 
 html_theme = "sphinx_book_theme"
@@ -43,4 +48,5 @@ source_suffix = {
 }
 
 templates_path = ["_templates"]
+html_static_path = ["_static"]
 exclude_patterns: list[str] = ["_build", "Thumbs.db", ".DS_Store"]

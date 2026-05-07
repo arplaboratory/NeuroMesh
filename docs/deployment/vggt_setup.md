@@ -7,7 +7,7 @@ depth estimation and 3D reconstruction from camera images.
 
 The VGGT pipeline uses two TensorRT models:
 
-```{mermaid}
+```mermaid
 graph LR
     IMG["Camera Image\n(1×3×392×518)"] --> ENC["Encoder\nvggt_image_encoder_2x.engine"]
     ENC --> FEAT["patch_tokens\n(1×1036×1024)"]

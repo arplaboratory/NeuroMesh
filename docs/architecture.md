@@ -6,7 +6,7 @@ plugin-based engine interface.
 
 ## Package Overview
 
-```{mermaid}
+```mermaid
 graph TD
     NI[neuromesh_interfaces<br/>ROS2 msgs & srvs]
     EI[engine_interface<br/>Abstract base + ROS node]
@@ -102,7 +102,7 @@ Contains all application-specific ROS2 nodes:
 
 ## Data Flow: VGGT Perception
 
-```{mermaid}
+```mermaid
 sequenceDiagram
     participant Cam as Camera Node
     participant Enc as VggtEncoderNode
@@ -124,7 +124,7 @@ sequenceDiagram
 
 Robots communicate neural features over ROS2 via Zenoh bridge:
 
-```{mermaid}
+```mermaid
 graph LR
     R1E[Robot 1<br/>EncoderNode] -->|/khonsu/features_khonsu| R2D[Robot 2<br/>DecoderNode]
     R2E[Robot 2<br/>EncoderNode] -->|/anubis/features_anubis| R1D[Robot 1<br/>DecoderNode]
