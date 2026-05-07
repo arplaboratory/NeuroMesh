@@ -38,3 +38,12 @@ deployment/vggt_setup
 
 design/vggt_refactoring
 ```
+
+```{toctree}
+:maxdepth: 1
+:caption: Project
+
+changelog
+contributing
+license
+```

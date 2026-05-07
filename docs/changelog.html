@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>NeuroMesh Documentation &#8212; NeuroMesh</title>
+    <title>Neuromesh Changelog &#8212; NeuroMesh</title>
   
   
   
@@ -43,12 +43,13 @@
     <script src="_static/doctools.js?v=fd6eb6e6"></script>
     <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'index';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'changelog';</script>
     <script src="_static/mermaid.min.js?v=fd8350a4"></script>
     <script src="_static/mermaid-init.js?v=0b72c9da"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Getting Started" href="getting_started.html" />
+    <link rel="next" title="Contributing" href="contributing.html" />
+    <link rel="prev" title="VGGT Encoder-Decoder Separation Design" href="design/vggt_refactoring.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   <meta name="docsearch:version" content="" />
@@ -100,8 +101,6 @@
       
       
       
-        
-      
       <dialog id="pst-primary-sidebar-modal"></dialog>
       <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
         
@@ -121,7 +120,7 @@
     
   
 
-<a class="navbar-brand logo" href="#">
+<a class="navbar-brand logo" href="index.html">
   
   
   
@@ -164,8 +163,8 @@
 <li class="toctree-l1"><a class="reference internal" href="design/vggt_refactoring.html">VGGT Encoder-Decoder Separation Design</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Project</span></p>
-<ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="changelog.html">Neuromesh Changelog</a></li>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Neuromesh Changelog</a></li>
 <li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="license.html">License</a></li>
 </ul>
@@ -242,7 +241,7 @@
       
       
       
-      <li><a href="_sources/index.md" target="_blank"
+      <li><a href="_sources/changelog.md" target="_blank"
    class="btn btn-sm btn-download-source-button dropdown-item"
    title="Download source file"
    data-bs-placement="left" data-bs-toggle="tooltip"
@@ -305,7 +304,9 @@
 <button class="btn btn-sm pst-navbar-icon search-button search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
     <i class="fa-solid fa-magnifying-glass fa-lg"></i>
 </button>
-
+<button class="sidebar-toggle secondary-toggle btn btn-sm pst-navbar-icon" title="Toggle secondary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="fa-solid fa-list"></span>
+</button>
 </div></div>
       
     </div>
@@ -316,11 +317,31 @@
               
 
 <div id="jb-print-docs-body" class="onlyprint">
-    <h1>NeuroMesh Documentation</h1>
+    <h1>Neuromesh Changelog</h1>
     <!-- Table of contents -->
     <div id="print-main-content">
         <div id="jb-print-toc">
             
+            <div>
+                <h2> Contents </h2>
+            </div>
+            <nav aria-label="Page">
+                <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#unreleased">[Unreleased]</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#pre-v0-0-1-m-current">[pre-v0.0.1-m] — current</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#added">Added</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#gq-v0-1-0-tc">[gq-v0.1.0-tc]</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id1">Added</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#pre-v1-3-0-tc">[pre-v1.3.0-tc]</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id2">Added</a></li>
+</ul>
+</li>
+</ul>
+            </nav>
         </div>
     </div>
 </div>
@@ -330,129 +351,47 @@
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="neuromesh-documentation">
-<h1>NeuroMesh Documentation<a class="headerlink" href="#neuromesh-documentation" title="Link to this heading">#</a></h1>
-<p>NeuroMesh is a general, modular, and
-decentralized framework for deploying multi-robot collaborative learning
-algorithms in real-world settings.</p>
-<div class="toctree-wrapper compound">
-<p aria-level="2" class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting Started</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="getting_started.html#key-features">Key Features</a></li>
-<li class="toctree-l2"><a class="reference internal" href="getting_started.html#prerequisites">Prerequisites</a></li>
-<li class="toctree-l2"><a class="reference internal" href="getting_started.html#environment-setup">Environment Setup</a></li>
-<li class="toctree-l2"><a class="reference internal" href="getting_started.html#build">Build</a></li>
-<li class="toctree-l2"><a class="reference internal" href="getting_started.html#quick-launch-vggt">Quick Launch: VGGT</a></li>
-<li class="toctree-l2"><a class="reference internal" href="getting_started.html#quick-launch-dust3r">Quick Launch: DUSt3R</a></li>
-<li class="toctree-l2"><a class="reference internal" href="getting_started.html#quick-launch-gat">Quick Launch: GAT</a></li>
+  <section id="neuromesh-changelog">
+<h1>Neuromesh Changelog<a class="headerlink" href="#neuromesh-changelog" title="Link to this heading">#</a></h1>
+<p>All notable changes to the Neuromesh project will be documented here.</p>
+<section id="unreleased">
+<h2>[Unreleased]<a class="headerlink" href="#unreleased" title="Link to this heading">#</a></h2>
+<p>Tags follow the format <code class="docutils literal notranslate"><span class="pre">&lt;target&gt;-v&lt;major&gt;.&lt;minor&gt;.&lt;patch&gt;-&lt;variant&gt;</span></code>.</p>
+</section>
+<hr class="docutils" />
+<section id="pre-v0-0-1-m-current">
+<h2>[pre-v0.0.1-m] — current<a class="headerlink" href="#pre-v0-0-1-m-current" title="Link to this heading">#</a></h2>
+<p><strong>Branch:</strong> <code class="docutils literal notranslate"><span class="pre">vggt-no-arl</span></code> -&gt; <code class="docutils literal notranslate"><span class="pre">main</span></code></p>
+<p>Initial pre-release targeting the Humble ROS distribution.</p>
+<section id="added">
+<h3>Added<a class="headerlink" href="#added" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p>Initial Humble compatibility support</p></li>
 </ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="build.html">Build Instructions</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="build.html#dependencies">Dependencies</a></li>
-<li class="toctree-l2"><a class="reference internal" href="build.html#onnx-runtime-required-before-colcon-build">ONNX Runtime (required before <code class="docutils literal notranslate"><span class="pre">colcon</span> <span class="pre">build</span></code>)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="build.html#colcon-build">Colcon Build</a></li>
-<li class="toctree-l2"><a class="reference internal" href="build.html#troubleshooting">Troubleshooting</a></li>
+</section>
+</section>
+<hr class="docutils" />
+<section id="gq-v0-1-0-tc">
+<h2>[gq-v0.1.0-tc]<a class="headerlink" href="#gq-v0-1-0-tc" title="Link to this heading">#</a></h2>
+<p>First tagged release targeting the GQ robot platforms.</p>
+<section id="id1">
+<h3>Added<a class="headerlink" href="#id1" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p>Initial release for GQ platforms</p></li>
 </ul>
-</li>
+</section>
+</section>
+<hr class="docutils" />
+<section id="pre-v1-3-0-tc">
+<h2>[pre-v1.3.0-tc]<a class="headerlink" href="#pre-v1-3-0-tc" title="Link to this heading">#</a></h2>
+<p>First tagged pre-release targeting ROS2 Jazzy</p>
+<section id="id2">
+<h3>Added<a class="headerlink" href="#id2" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p>Support for ROS 2 Jazzy on Ubuntu 24.04.</p></li>
 </ul>
-</div>
-<div class="toctree-wrapper compound">
-<p aria-level="2" class="caption" role="heading"><span class="caption-text">Architecture</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="architecture.html">System Architecture</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="architecture.html#package-overview">Package Overview</a></li>
-<li class="toctree-l2"><a class="reference internal" href="architecture.html#layer-descriptions">Layer Descriptions</a></li>
-<li class="toctree-l2"><a class="reference internal" href="architecture.html#data-flow-vggt-perception">Data Flow: VGGT Perception</a></li>
-<li class="toctree-l2"><a class="reference internal" href="architecture.html#multi-robot-communication">Multi-Robot Communication</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="packages/neuromesh_interfaces.html"><code class="docutils literal notranslate"><span class="pre">neuromesh_interfaces</span></code></a><ul>
-<li class="toctree-l2"><a class="reference internal" href="packages/neuromesh_interfaces.html#messages">Messages</a></li>
-<li class="toctree-l2"><a class="reference internal" href="packages/neuromesh_interfaces.html#services">Services</a></li>
-<li class="toctree-l2"><a class="reference internal" href="packages/neuromesh_interfaces.html#build">Build</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="packages/engine_interface.html"><code class="docutils literal notranslate"><span class="pre">engine_interface</span></code></a><ul>
-<li class="toctree-l2"><a class="reference internal" href="packages/engine_interface.html#baseengine"><code class="docutils literal notranslate"><span class="pre">BaseEngine</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="packages/engine_interface.html#engineinterfacenode"><code class="docutils literal notranslate"><span class="pre">EngineInterfaceNode</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="packages/engine_interface.html#writing-a-new-backend-plugin">Writing a New Backend Plugin</a></li>
-<li class="toctree-l2"><a class="reference internal" href="packages/engine_interface.html#tests">Tests</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="packages/tensorrt_engine.html"><code class="docutils literal notranslate"><span class="pre">tensorrt_engine</span></code></a><ul>
-<li class="toctree-l2"><a class="reference internal" href="packages/tensorrt_engine.html#overview">Overview</a></li>
-<li class="toctree-l2"><a class="reference internal" href="packages/tensorrt_engine.html#model-files">Model Files</a></li>
-<li class="toctree-l2"><a class="reference internal" href="packages/tensorrt_engine.html#converting-onnx-tensorrt">Converting ONNX → TensorRT</a></li>
-<li class="toctree-l2"><a class="reference internal" href="packages/tensorrt_engine.html#plugin-registration">Plugin Registration</a></li>
-<li class="toctree-l2"><a class="reference internal" href="packages/tensorrt_engine.html#requirements">Requirements</a></li>
-<li class="toctree-l2"><a class="reference internal" href="packages/tensorrt_engine.html#tests">Tests</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="packages/onnx_engine.html"><code class="docutils literal notranslate"><span class="pre">onnx_engine</span></code></a><ul>
-<li class="toctree-l2"><a class="reference internal" href="packages/onnx_engine.html#overview">Overview</a></li>
-<li class="toctree-l2"><a class="reference internal" href="packages/onnx_engine.html#usage">Usage</a></li>
-<li class="toctree-l2"><a class="reference internal" href="packages/onnx_engine.html#plugin-registration">Plugin Registration</a></li>
-<li class="toctree-l2"><a class="reference internal" href="packages/onnx_engine.html#requirements">Requirements</a></li>
-<li class="toctree-l2"><a class="reference internal" href="packages/onnx_engine.html#tests">Tests</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="packages/neuromesh_platform_r2.html"><code class="docutils literal notranslate"><span class="pre">neuromesh_platform_r2</span></code></a><ul>
-<li class="toctree-l2"><a class="reference internal" href="packages/neuromesh_platform_r2.html#node-reference">Node Reference</a></li>
-<li class="toctree-l2"><a class="reference internal" href="packages/neuromesh_platform_r2.html#launch-files">Launch Files</a></li>
-<li class="toctree-l2"><a class="reference internal" href="packages/neuromesh_platform_r2.html#configuration-files">Configuration Files</a></li>
-<li class="toctree-l2"><a class="reference internal" href="packages/neuromesh_platform_r2.html#build">Build</a></li>
-</ul>
-</li>
-</ul>
-</div>
-<div class="toctree-wrapper compound">
-<p aria-level="2" class="caption" role="heading"><span class="caption-text">Deployment</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="deployment/real_world.html">Real-World Deployment</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="deployment/real_world.html#requirements">Requirements</a></li>
-<li class="toctree-l2"><a class="reference internal" href="deployment/real_world.html#setup-steps-per-robot">Setup Steps (Per Robot)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="deployment/real_world.html#perception-using-dust3r">Perception using DUSt3R</a></li>
-<li class="toctree-l2"><a class="reference internal" href="deployment/real_world.html#collaborative-goal-assignment-using-gat">Collaborative Goal Assignment using GAT</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="deployment/vggt_setup.html">VGGT Setup</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="deployment/vggt_setup.html#model-architecture">Model Architecture</a></li>
-<li class="toctree-l2"><a class="reference internal" href="deployment/vggt_setup.html#image-preprocessing">Image Preprocessing</a></li>
-<li class="toctree-l2"><a class="reference internal" href="deployment/vggt_setup.html#configuration">Configuration</a></li>
-<li class="toctree-l2"><a class="reference internal" href="deployment/vggt_setup.html#launch">Launch</a></li>
-<li class="toctree-l2"><a class="reference internal" href="deployment/vggt_setup.html#published-topics">Published Topics</a></li>
-<li class="toctree-l2"><a class="reference internal" href="deployment/vggt_setup.html#default-robot-names">Default Robot Names</a></li>
-<li class="toctree-l2"><a class="reference internal" href="deployment/vggt_setup.html#coordinate-frames">Coordinate Frames</a></li>
-<li class="toctree-l2"><a class="reference internal" href="deployment/vggt_setup.html#notes">Notes</a></li>
-</ul>
-</li>
-</ul>
-</div>
-<div class="toctree-wrapper compound">
-<p aria-level="2" class="caption" role="heading"><span class="caption-text">Design Documents</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="design/vggt_refactoring.html">VGGT Encoder-Decoder Separation Design</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="design/vggt_refactoring.html#executive-summary">Executive Summary</a></li>
-<li class="toctree-l2"><a class="reference internal" href="design/vggt_refactoring.html#current-vs-proposed-architecture">Current vs. Proposed Architecture</a></li>
-<li class="toctree-l2"><a class="reference internal" href="design/vggt_refactoring.html#node-design">Node Design</a></li>
-<li class="toctree-l2"><a class="reference internal" href="design/vggt_refactoring.html#feature-aggregation-strategy">Feature Aggregation Strategy</a></li>
-<li class="toctree-l2"><a class="reference internal" href="design/vggt_refactoring.html#configuration">Configuration</a></li>
-<li class="toctree-l2"><a class="reference internal" href="design/vggt_refactoring.html#implementation-roadmap">Implementation Roadmap</a></li>
-<li class="toctree-l2"><a class="reference internal" href="design/vggt_refactoring.html#migration-strategy">Migration Strategy</a></li>
-<li class="toctree-l2"><a class="reference internal" href="design/vggt_refactoring.html#benefits">Benefits</a></li>
-</ul>
-</li>
-</ul>
-</div>
-<div class="toctree-wrapper compound">
-<p aria-level="2" class="caption" role="heading"><span class="caption-text">Project</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="changelog.html">Neuromesh Changelog</a></li>
-<li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing</a></li>
-<li class="toctree-l1"><a class="reference internal" href="license.html">License</a></li>
-</ul>
-</div>
+</section>
+</section>
 </section>
 
 
@@ -466,12 +405,21 @@ algorithms in real-world settings.</p>
                 <footer class="prev-next-footer d-print-none">
                   
 <div class="prev-next-area">
+    <a class="left-prev"
+       href="design/vggt_refactoring.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">VGGT Encoder-Decoder Separation Design</p>
+      </div>
+    </a>
     <a class="right-next"
-       href="getting_started.html"
+       href="contributing.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">Getting Started</p>
+        <p class="prev-next-title">Contributing</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -481,6 +429,35 @@ algorithms in real-world settings.</p>
             </div>
             
             
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item"><div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> Contents
+  </div>
+  <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#unreleased">[Unreleased]</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#pre-v0-0-1-m-current">[pre-v0.0.1-m] — current</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#added">Added</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#gq-v0-1-0-tc">[gq-v0.1.0-tc]</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id1">Added</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#pre-v1-3-0-tc">[pre-v1.3.0-tc]</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id2">Added</a></li>
+</ul>
+</li>
+</ul>
+  </nav></div>
+
+</div></div>
               
             
           </div>
