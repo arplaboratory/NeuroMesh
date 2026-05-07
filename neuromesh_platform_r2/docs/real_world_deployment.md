@@ -9,7 +9,7 @@ Follow these instructions while having real world agents ready (ground robots an
 ### Third-Party Software
 
 - TensorRT (TODO: version)
-- ROS2 Humble
+- ROS2 Jazzy
 - Zenoh (TODO: version)
 - zenoh-bridge-ros2dds v1.0.0-dev-34-gca4a1f2
 - NVIDIA Cuda (TODO: version)
