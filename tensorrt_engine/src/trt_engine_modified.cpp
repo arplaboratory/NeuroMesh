@@ -140,6 +140,7 @@ void TRTEngine::runInference(const std::vector<const void *> &inputTensors,
   }
 
   cudaStream_t stream;
+
   cudaStreamCreate(&stream);
 
   // Copy input data to device
@@ -168,5 +169,6 @@ void TRTEngine::runInference(const std::vector<const void *> &inputTensors,
   }
 
   cudaStreamSynchronize(stream);
+
   cudaStreamDestroy(stream);
 }

@@ -16,6 +16,17 @@ Initial pre-release targeting the Humble ROS distribution.
 
 ---
 
+## [pre-v0.1.0-m]
+**Branch:** `vggt-no-arl-split` -> `main`
+
+MVP for decoder / encoder split.
+
+### Added
+- Tested decoder / encoder split implementation
+- Configurations for split architecture
+
+---
+
 ## [gq-v0.1.0-tc]
 
 First tagged release targeting the GQ robot platforms.
