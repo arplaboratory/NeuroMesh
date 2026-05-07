@@ -6,7 +6,7 @@ Tags follow the format `<target>-v<major>.<minor>.<patch>-<variant>`.
 
 ---
 
-## [pre-v0.0.1-m] — current
+## [pre-v0.0.1-m]
 **Branch:** `vggt-no-arl` -> `main`
 
 Initial pre-release targeting the Humble ROS distribution.
@@ -16,7 +16,7 @@ Initial pre-release targeting the Humble ROS distribution.
 
 ---
 
-## [pre-v0.1.0-m]
+## [pre-v0.1.0-m]  — current
 **Branch:** `vggt-no-arl-split` -> `main`
 
 MVP for decoder / encoder split.
