@@ -5,7 +5,7 @@
 #include <sensor_msgs/msg/image.hpp>
 #include <neuromesh_interfaces/msg/feature.hpp>
 #include <neuromesh_interfaces/srv/tensor_request.hpp>
-#include <cv_bridge/cv_bridge.h>
+#include <cv_bridge/cv_bridge.hpp>
 #include <opencv2/opencv.hpp>
 
 #include <future>

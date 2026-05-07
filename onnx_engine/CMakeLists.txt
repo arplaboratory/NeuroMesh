@@ -63,8 +63,6 @@ if(BUILD_TESTING)
   target_link_libraries(test_onnx_engine onnx_engine)
 endif()
 
-install(FILES plugin_description.xml
-  DESTINATION share/${PROJECT_NAME})
 pluginlib_export_plugin_description_file(engine_interface plugin_description.xml)
 
 install(TARGETS
@@ -75,12 +73,12 @@ install(TARGETS
   RUNTIME DESTINATION bin
 )
 
-install(DIRECTORY launch
-  DESTINATION share/${PROJECT_NAME})
+#install(DIRECTORY launch
+#  DESTINATION share/${PROJECT_NAME})
 install(DIRECTORY models
   DESTINATION share/${PROJECT_NAME})
 
-install(FILES plugin_description.xml 
+install(FILES plugin_description.xml
   DESTINATION share/${PROJECT_NAME})
 
 ament_export_include_directories(include)

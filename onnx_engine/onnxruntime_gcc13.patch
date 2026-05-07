@@ -1,0 +1,15 @@
+diff --git a/cmake/CMakeLists.txt b/cmake/CMakeLists.txt
+index acbde7f56a..2eaa48f1b7 100644
+--- a/cmake/CMakeLists.txt
++++ b/cmake/CMakeLists.txt
+@@ -1010,6 +1010,10 @@ if (WIN32)
+ 
+ else()
+   add_definitions(-DPLATFORM_POSIX)
++  if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 13)
++    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=stringop-overflow -Wno-error=deprecated-declarations -Wno-error=dangling-reference -Wno-error=maybe-uninitialized")
++    set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -Wno-error=stringop-overflow -Wno-error=maybe-uninitialized")
++  endif()
+   check_cxx_compiler_flag(-Wunused-but-set-parameter HAS_UNUSED_BUT_SET_PARAMETER)
+   check_cxx_compiler_flag(-Wunused-but-set-variable HAS_UNUSED_BUT_SET_VARIABLE)
+   check_cxx_compiler_flag(-Wunused-variable HAS_UNUSED_VARIABLE)
