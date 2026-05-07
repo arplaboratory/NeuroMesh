@@ -25,6 +25,7 @@ std::future<std::vector<std::shared_ptr<neuromesh_interfaces::msg::Tensor>>>
 GATPlannerImplementation::performInference(
     const std::string &model_name,
     const std::vector<neuromesh_interfaces::msg::Tensor> &tensors) {
+
   if (!tensor_client_->wait_for_service(std::chrono::seconds(1))) {
     RCLCPP_ERROR(this->get_logger(), "Engine not reachable via service.");
     // Complex stuff just to return future that resolves to empty tensor
@@ -61,6 +62,28 @@ GATPlannerImplementation::performInference(
         }
         return output_tensors;
       });
+  
+  // RCLCPP_INFO(this->get_logger(), "Here all good");
+  // std::vector<std::shared_ptr<neuromesh_interfaces::msg::Tensor>> r_tensors = return_tensors.get();
+  // auto tensor_ptr = r_tensors[0];  // Assume we're just printing the first tensor
+  // if (tensor_ptr->data_type != 9) {  // 9 = float32
+  //     RCLCPP_WARN(this->get_logger(), "Tensor data_type is not float32 (got %d)", tensor_ptr->data_type);
+  //     return;
+  // }
+
+  // size_t num_floats = tensor_ptr->data.size() / sizeof(float);
+  // const float* float_data = reinterpret_cast<const float*>(tensor_ptr->data.data());
+
+  // std::ostringstream oss;
+  // oss << "return_tensors: [";
+  // for (size_t i = 0; i < num_floats; ++i) {
+  //     oss << float_data[i];
+  //     if (i < num_floats - 1)
+  //         oss << ", ";
+  // }
+  // oss << "]";
+
+  // RCLCPP_INFO(this->get_logger(), "return_tensors = %s", oss.str().c_str());
 
   return return_tensors;
 }

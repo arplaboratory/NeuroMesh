@@ -109,35 +109,35 @@ def launch_setup(context):
     #         condition=IfCondition(start_position),
     #     )
     # )
-    # composable_nodes.append(
-    #     ComposableNode(
-    #         package="engine_interface",
-    #         namespace=name,
-    #         name=["engine", LaunchConfiguration("agent_num")],
-    #         plugin="engine_interface::EngineInterfaceNode",
-    #         parameters=[
-    #             {
-    #                 "engine_type": engine_type,
-    #                 "model_names": "encoder,decoder1,decoder2",
-    #                 "encoder.model_path": get_package_share_directory(engine_plugin_package)
-    #                 + "/models/gat_planner/encoder." + model,
-    #                 "encoder.input_dimensions": "1,1,14",
-    #                 "encoder.output_dimensions": "1,1,64",
-    #                 "encoder.tensor_type": "fp32",
-    #                 "decoder1.model_path": get_package_share_directory(engine_plugin_package)
-    #                 + "/models/gat_planner/gat_layer1." + model,
-    #                 "decoder1.input_dimensions": "1,1,64;1,2,64;1,1,64", ## ooops, here: size of messages = second input is not fixed, is it a pb??
-    #                 "decoder1.output_dimensions": "1,1,64",
-    #                 "decoder1.tensor_type": "fp32",
-    #                 "decoder2.model_path": get_package_share_directory(engine_plugin_package)
-    #                 + "/models/gat_planner/gat_layer2." + model,
-    #                 "decoder2.input_dimensions": "1,1,64;1,2,64;1,1,64", ## ooops, here: size of messages = second input is not fixed, is it a pb??
-    #                 "decoder2.output_dimensions": "1,1,2",
-    #                 "decoder2.tensor_type": "fp32",
-    #             }
-    #         ],
-    #     )
-    # )
+    composable_nodes.append(
+        ComposableNode(
+            package="engine_interface",
+            namespace=name,
+            name=["engine", LaunchConfiguration("agent_num")],
+            plugin="engine_interface::EngineInterfaceNode",
+            parameters=[
+                {
+                    "engine_type": engine_type,
+                    "model_names": "encoder,decoder1,decoder2",
+                    "encoder.model_path": get_package_share_directory(engine_plugin_package)
+                    + "/models/gat_planner/encoder." + model,
+                    "encoder.input_dimensions": "1,1,14",
+                    "encoder.output_dimensions": "1,1,64",
+                    "encoder.tensor_type": "fp32",
+                    "decoder1.model_path": get_package_share_directory(engine_plugin_package)
+                    + "/models/gat_planner/gat_layer1." + model,
+                    "decoder1.input_dimensions": "1,1,64;1,2,64;1,1,64", ## ooops, here: size of messages = second input is not fixed, is it a pb??
+                    "decoder1.output_dimensions": "1,1,64",
+                    "decoder1.tensor_type": "fp32",
+                    "decoder2.model_path": get_package_share_directory(engine_plugin_package)
+                    + "/models/gat_planner/gat_layer2." + model,
+                    "decoder2.input_dimensions": "1,1,64;1,2,64;1,1,64", ## ooops, here: size of messages = second input is not fixed, is it a pb??
+                    "decoder2.output_dimensions": "1,1,2",
+                    "decoder2.tensor_type": "fp32",
+                }
+            ],
+        )
+    )
     
     composable_nodes.append(
         ComposableNode(
