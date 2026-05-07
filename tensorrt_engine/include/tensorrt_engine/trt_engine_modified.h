@@ -24,6 +24,7 @@ public:
 protected:
     Logger logger;
     std::unique_ptr<nvinfer1::ICudaEngine> engine;
+    std::unique_ptr<nvinfer1::IRuntime> runtime;
 
     std::unique_ptr<nvinfer1::IExecutionContext> context;
     std::vector<void*> bindings;

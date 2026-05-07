@@ -46,7 +46,8 @@ ToyImplementation::ToyImplementation(const rclcpp::NodeOptions &options)
 std::future<std::vector<std::shared_ptr<neuromesh_interfaces::msg::Tensor>>>
 ToyImplementation::performInference(
     const std::string &model_name,
-    const std::vector<neuromesh_interfaces::msg::Tensor> &tensors) {
+    const std::vector<neuromesh_interfaces::msg::Tensor> &tensors
+) {
   if (!tensor_client_->wait_for_service(std::chrono::seconds(1))) {
     RCLCPP_ERROR(this->get_logger(), "Engine not reachable via service.");
     // Complex stuff just to return future that resolves to empty tensor
@@ -62,10 +63,17 @@ ToyImplementation::performInference(
   }
 
   // Create a request to send to the service server
-  auto request =
-      std::make_shared<neuromesh_interfaces::srv::TensorRequest::Request>();
+  auto request = std::make_shared<neuromesh_interfaces::srv::TensorRequest::Request>();
   request->model_name = model_name;
   request->tensor1 = tensors;
+  RCLCPP_INFO(rclcpp::get_logger("logger.neuromesh"), "Requesting tensor: %s", model_name.c_str());
+  for (size_t i = 0; i < tensors.size(); i++) {
+    std::stringstream dims;
+    for(size_t j = 0; j < tensors[i].shape.dims.size(); j++) {
+        dims << tensors[i].shape.dims[j] << ",";
+    }
+    RCLCPP_INFO(rclcpp::get_logger("logger.neuromesh"), "> tensor[%d]: (%s) %ld dims: %s", i, tensors[i].name.c_str(), tensors[i].data.size(), dims.str().c_str());
+  }
 
   // Call the service and wait for the response
   std::shared_future<
@@ -77,8 +85,12 @@ ToyImplementation::performInference(
         std::vector<std::shared_ptr<neuromesh_interfaces::msg::Tensor>>
             output_tensors;
         for (const auto &tensor : future.get()->tensor2) {
-          output_tensors.emplace_back(
-              std::make_shared<neuromesh_interfaces::msg::Tensor>(tensor));
+            std::stringstream dims;
+            for(size_t j = 0; j < tensor.shape.dims.size(); j++) {
+                dims << tensor.shape.dims[j] << ",";
+            }
+            RCLCPP_INFO(rclcpp::get_logger("logger.neuromesh"), "Tensors returned after inference: %s tensor: %ld dims: %s", tensor.name.c_str(), tensor.data.size(), dims.str().c_str());
+            output_tensors.emplace_back( std::make_shared<neuromesh_interfaces::msg::Tensor>(tensor));
         }
         return output_tensors;
       });
@@ -93,7 +105,6 @@ bool ToyImplementation::buildDecoderTensor(
     neuromesh_interfaces::msg::Tensor &neighbour_tensor,
     neuromesh_interfaces::msg::Tensor &pos1, neuromesh_interfaces::msg::Tensor &pos2,
     const YAML::Node &pos1_yaml, const YAML::Node &pos2_yaml) {
-  RCLCPP_DEBUG(this->get_logger(), "Inside buildDecoderTensor function");
   // RCLCPP_INFO(this->get_logger(), "Building decoder tensor with %d features.",
   //             buffer.size());
   startClock("decoder_tensor");
@@ -108,13 +119,19 @@ bool ToyImplementation::buildDecoderTensor(
   }
 
   // Check if we have enough features
-  if (neighbor_ids.size() < 2) {
-    RCLCPP_WARN(this->get_logger(),
-                "Not enough neighbors found, number of neighbors: %d",
-                neighbor_ids.size());
+  if (neighbor_ids.size() < all_agents.size()) {
+    RCLCPP_WARN(
+      this->get_logger(),
+      "Num neighbors %ld/%ld, returning",
+      neighbor_ids.size(),
+      all_agents.size()
+    );
     return false;
+  } else {
+    RCLCPP_INFO(this->get_logger(), "Neighbors found");
   }
 
+  RCLCPP_INFO(this->get_logger(), "Generating tensor for decoding");
   const uint32_t feature_dim = 786432; // Feature dimension
   const size_t M = neighbor_ids.size();
 
@@ -134,8 +151,7 @@ bool ToyImplementation::buildDecoderTensor(
   }
 
   // Set shape for own tensor
-  own_tensor.shape.dims = {static_cast<long>(M), 3,
-                           static_cast<long>(feature_dim)};
+  own_tensor.shape.dims = {static_cast<long>(M), all_agents.size()+1, static_cast<long>(feature_dim)};
   own_tensor.data_type = own_feature->tensor.data_type;
   own_tensor.strides = own_feature->tensor.strides;
 
@@ -161,7 +177,7 @@ bool ToyImplementation::buildDecoderTensor(
   }
 
   // Set shape for neighbor tensor
-  neighbour_tensor.shape.dims = {static_cast<long>(M), 3,
+  neighbour_tensor.shape.dims = {static_cast<long>(M), all_agents.size()+1,
                                  static_cast<long>(feature_dim)};
 
   // Process pos1
@@ -170,8 +186,7 @@ bool ToyImplementation::buildDecoderTensor(
         pos1_yaml["pos1"].as<std::vector<std::vector<std::vector<int>>>>();
     if (!pos1_data.empty() && !pos1_data[0].empty()) {
       pos1.data_type = 7; // INT32
-      pos1.shape.dims = {static_cast<long>(M),
-                         static_cast<long>(pos1_data[0].size()), 2};
+      pos1.shape.dims = {2, static_cast<long>(pos1_data[0].size()), 2};
 
       // Resize data to accommodate M copies of the original data
       pos1.data.resize(pos1.shape.dims[0] * pos1.shape.dims[1] *
@@ -206,7 +221,7 @@ bool ToyImplementation::buildDecoderTensor(
         pos2_yaml["pos2"].as<std::vector<std::vector<std::vector<int>>>>();
     if (!pos2_data.empty() && !pos2_data[0].empty()) {
       pos2.data_type = 7; // INT32
-      pos2.shape.dims = {static_cast<long>(M),
+      pos2.shape.dims = {2,
                          static_cast<long>(pos2_data[0].size()), 2};
 
       // Resize data to accommodate M copies of the original data
@@ -236,13 +251,9 @@ bool ToyImplementation::buildDecoderTensor(
     return false;
   }
 
+  RCLCPP_INFO(this->get_logger(), "Generated tensor for decoding");
+
   stopClock("decoder_tensor");
-  RCLCPP_DEBUG(this->get_logger(), "Built decoder tensor in %lims",
-               times["decoder_tensor"].first);
-
-  // decoder_tensor = tensor_ints_to_floats(decoder_tensor);
-
-  RCLCPP_DEBUG(this->get_logger(), "Returning decoder tensor");
 
   return true;
 }

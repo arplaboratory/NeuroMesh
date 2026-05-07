@@ -37,13 +37,15 @@ Follow these instructions while having real world agents ready (ground robots an
 
 On each real world agent perform these steps to setup neuromesh:
 
-1. Build neuromesh
+1. Convert models in `tensorrt_engine` directory into tensorrt format. Refer to the README in the directory.
+
+2. Build neuromesh
 
 ```
 colcon build --packages-up-to neuromesh_platform_r2
 ```
 
-2. Export these environment variables on every terminal window where you start a ROS2 node. Note down the `ROS_DOMAIN_ID`. It must be unique on each agent:
+3. Export these environment variables on every terminal window where you start a ROS2 node. Note down the `ROS_DOMAIN_ID`. It must be unique on each agent:
 
 ```
 export ROS_DOMAIN_ID=80
@@ -51,20 +53,20 @@ export ROBOT_NAME=bumblebee
 export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 ```
 
-3. Modify `config/zenoh_config.json5`:
+4. Modify `config/zenoh_config.json5`:
 
 - Add the `ROS_DOMAIN_ID` that you noted above in `plugins -> ros2dds -> domain` section as indicated in the file.
 - Put the IPs of all the robots on the network in `connect -> endpoints` section as indicated in the file. You can find the IPs using `ifconfig` command.
 
-4. Make sure the topic for the camera node is correct in `launch/dust3r_model_neuromesh_launch.py` in `neuromesh_platform_r2` ROS2 `ComposableNode` near the top of the file.
+5. Make sure the topic for the camera node is correct in `launch/dust3r_model_neuromesh_launch.py` in `neuromesh_platform_r2` ROS2 `ComposableNode` near the top of the file.
 
-5. Get the encoder and decoder onnx model files on the robots.
+6. Get the encoder and decoder onnx model files on the robots.
 
-6. Convert the encoder and decoder onnx model file to trt on each robot and save them in the models folder in the tensorrt_engine package.
+7. Convert the encoder and decoder onnx model file to trt on each robot and save them in the models folder in the tensorrt_engine package.
 
-7. Build the tensorrt_engine package using the same build commands in step 1.
+8. Build the tensorrt_engine package using the same build commands in step 1.
 
-8. Modify `dust3r_model_neuromesh_launch.sh` to launch the following software in order. Make sure there is sufficient time between them that they start sequentially. You can run these commands manually if that's what you prefer:
+9. Modify `dust3r_model_neuromesh_launch.sh` to launch the following software in order. Make sure there is sufficient time between them that they start sequentially. You can run these commands manually if that's what you prefer:
 
 - Export variables in step 2 and source ROS2 workspace on all the panes.
 - Camera node
@@ -77,7 +79,7 @@ export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 - NeuroMesh DUSt3R exmaple launch file
   - It can be run using `ros2 launch neuromesh_platform_r2 dust3r_model_neuromesh_launch.py name:=$ROBOT_NAME`
 
-9. Visualize point cloud output (optional)
+10. Visualize point cloud output (optional)
 
 - Open Rviz2 and subscribe to the global frame. By default it is set to `$ROBOT_NAME/map`.
 - Select `/$ROBOT_NAME/res1_pts3d_cloud` or `/$ROBOT_NAME/res2_pts3d_cloud` topics in the PointCloud2 visualization topic in the displays panel.
