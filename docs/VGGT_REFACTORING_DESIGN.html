@@ -1,0 +1,964 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="./" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>VGGT Encoder-Decoder Separation Design Document &#8212; NeuroMesh</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/sphinx-book-theme.css?v=3c74b3bc" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="_static/documentation_options.js?v=f9c1cefe"></script>
+    <script src="_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'VGGT_REFACTORING_DESIGN';</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script src="_static/mermaid-init.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search..."
+         aria-label="Search..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">NeuroMesh</p>
+  
+</a></div>
+        <div class="sidebar-primary-item">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button></div>
+        <div class="sidebar-primary-item"><nav class="bd-links bd-docs-nav" aria-label="Main">
+    <div class="bd-toc-item navbar-nav active">
+        <p aria-level="2" class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="build.html">Build Instructions</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Architecture</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="architecture.html">System Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="packages/neuromesh_interfaces.html"><code class="docutils literal notranslate"><span class="pre">neuromesh_interfaces</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="packages/engine_interface.html"><code class="docutils literal notranslate"><span class="pre">engine_interface</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="packages/tensorrt_engine.html"><code class="docutils literal notranslate"><span class="pre">tensorrt_engine</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="packages/onnx_engine.html"><code class="docutils literal notranslate"><span class="pre">onnx_engine</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="packages/neuromesh_platform_r2.html"><code class="docutils literal notranslate"><span class="pre">neuromesh_platform_r2</span></code></a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Deployment</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="deployment/real_world.html">Real-World Deployment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deployment/vggt_setup.html">VGGT Setup</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Design Documents</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="design/vggt_refactoring.html">VGGT Encoder-Decoder Separation Design</a></li>
+</ul>
+
+    </div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+
+<div class="sbt-scroll-pixel-helper"></div>
+
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item"><button class="sidebar-toggle primary-toggle btn btn-sm" title="Toggle primary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <span class="fa-solid fa-bars"></span>
+</button></div>
+      
+    </div>
+  
+  
+    <div class="header-article-items__end">
+      
+        <div class="header-article-item">
+
+<div class="article-header-buttons">
+
+
+<a href="https://github.com/arplaboratory/neuromesh" target="_blank"
+   class="btn btn-sm btn-source-repository-button"
+   title="Source repository"
+   data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fab fa-github"></i>
+  </span>
+
+</a>
+
+
+
+
+
+
+<div class="dropdown dropdown-download-buttons">
+  <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Download this page">
+    <i class="fas fa-download"></i>
+  </button>
+  <ul class="dropdown-menu">
+      
+      
+      
+      <li><a href="_sources/VGGT_REFACTORING_DESIGN.md" target="_blank"
+   class="btn btn-sm btn-download-source-button dropdown-item"
+   title="Download source file"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file"></i>
+  </span>
+<span class="btn__text-container">.md</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li>
+<button onclick="window.print()"
+  class="btn btn-sm btn-download-pdf-button dropdown-item"
+  title="Print to PDF"
+  data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file-pdf"></i>
+  </span>
+<span class="btn__text-container">.pdf</span>
+</button>
+</li>
+      
+  </ul>
+</div>
+
+
+
+
+<button onclick="toggleFullScreen()"
+  class="btn btn-sm btn-fullscreen-button pst-navbar-icon"
+  title="Fullscreen mode"
+  data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-expand"></i>
+  </span>
+
+</button>
+
+
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button>
+
+
+<button class="btn btn-sm pst-navbar-icon search-button search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass fa-lg"></i>
+</button>
+<button class="sidebar-toggle secondary-toggle btn btn-sm pst-navbar-icon" title="Toggle secondary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="fa-solid fa-list"></span>
+</button>
+</div></div>
+      
+    </div>
+  
+</div>
+</div>
+              
+              
+
+<div id="jb-print-docs-body" class="onlyprint">
+    <h1>VGGT Encoder-Decoder Separation Design Document</h1>
+    <!-- Table of contents -->
+    <div id="print-main-content">
+        <div id="jb-print-toc">
+            
+            <div>
+                <h2> Contents </h2>
+            </div>
+            <nav aria-label="Page">
+                <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#executive-summary">Executive Summary</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#architecture-overview">Architecture Overview</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#current-architecture-monolithic">Current Architecture (Monolithic)</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#proposed-architecture-separated">Proposed Architecture (Separated)</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#node-design-details">Node Design Details</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#vggt-encoder-node">1. VGGT Encoder Node</a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#purpose">Purpose</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#inputs">Inputs</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#outputs">Outputs</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#core-components">Core Components</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#key-methods">Key Methods</a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#vggt-decoder-node">2. VGGT Decoder Node</a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#id1">Purpose</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#id2">Inputs</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#id3">Outputs</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#id4">Core Components</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#id5">Key Methods</a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#feature-aggregation-strategy">3. Feature Aggregation Strategy</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#configuration-system">Configuration System</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#unified-configuration-file">Unified Configuration File</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#launch-file-structure">Launch File Structure</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#implementation-roadmap">Implementation Roadmap</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phase-1-infrastructure-setup-week-1">Phase 1: Infrastructure Setup (Week 1)</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phase-2-encoder-node-implementation-week-2">Phase 2: Encoder Node Implementation (Week 2)</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phase-3-decoder-node-implementation-week-3">Phase 3: Decoder Node Implementation (Week 3)</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phase-4-integration-and-testing-week-4">Phase 4: Integration and Testing (Week 4)</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phase-5-optional-enhancements">Phase 5: Optional Enhancements</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#migration-strategy">Migration Strategy</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#backward-compatibility">Backward Compatibility</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#gradual-migration">Gradual Migration</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#testing-strategy">Testing Strategy</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#unit-tests">Unit Tests</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#integration-tests">Integration Tests</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#system-tests">System Tests</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#benefits-of-this-design">Benefits of This Design</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#conclusion">Conclusion</a></li>
+</ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="vggt-encoder-decoder-separation-design-document">
+<h1>VGGT Encoder-Decoder Separation Design Document<a class="headerlink" href="#vggt-encoder-decoder-separation-design-document" title="Link to this heading">#</a></h1>
+<section id="executive-summary">
+<h2>Executive Summary<a class="headerlink" href="#executive-summary" title="Link to this heading">#</a></h2>
+<p>This document outlines the design for refactoring the Visual Geometry Grounded Transformation (VGGT) system from a single monolithic node into two separate ROS2 nodes: <code class="docutils literal notranslate"><span class="pre">vggt_encoder_node</span></code> and <code class="docutils literal notranslate"><span class="pre">vggt_decoder_node</span></code>. This separation aims to eliminate async scheduling conflicts, improve modularity, and enable better scalability for multi-robot systems.</p>
+</section>
+<section id="architecture-overview">
+<h2>Architecture Overview<a class="headerlink" href="#architecture-overview" title="Link to this heading">#</a></h2>
+<section id="current-architecture-monolithic">
+<h3>Current Architecture (Monolithic)<a class="headerlink" href="#current-architecture-monolithic" title="Link to this heading">#</a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>┌─────────────────────────────────────────┐
+│          vggt_neuromesh_node            │
+│  ┌─────────────┐    ┌─────────────┐    │
+│  │   Encoder   │───►│   Decoder   │    │
+│  └─────────────┘    └─────────────┘    │
+│         │                   │           │
+│         └───────┬───────────┘           │
+│                 ▼                       │
+│          TensorRT Service               │
+└─────────────────────────────────────────┘
+</pre></div>
+</div>
+</section>
+<section id="proposed-architecture-separated">
+<h3>Proposed Architecture (Separated)<a class="headerlink" href="#proposed-architecture-separated" title="Link to this heading">#</a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>┌─────────────────────┐         ┌─────────────────────┐
+│  vggt_encoder_node  │         │  vggt_decoder_node  │
+│  ┌─────────────┐    │         │  ┌─────────────┐    │
+│  │   Encoder   │    │◄────────┤  │   Decoder   │    │
+│  └─────────────┘    │Features │  └─────────────┘    │
+│         │           │  Topic  │         │           │
+│         ▼           │         │         ▼           │
+│  TensorRT Service   │         │  TensorRT Service   │
+└─────────────────────┘         └─────────────────────┘
+</pre></div>
+</div>
+</section>
+</section>
+<section id="node-design-details">
+<h2>Node Design Details<a class="headerlink" href="#node-design-details" title="Link to this heading">#</a></h2>
+<section id="vggt-encoder-node">
+<h3>1. VGGT Encoder Node<a class="headerlink" href="#vggt-encoder-node" title="Link to this heading">#</a></h3>
+<section id="purpose">
+<h4>Purpose<a class="headerlink" href="#purpose" title="Link to this heading">#</a></h4>
+<p>Processes camera images and generates feature representations for multi-robot perception.</p>
+</section>
+<section id="inputs">
+<h4>Inputs<a class="headerlink" href="#inputs" title="Link to this heading">#</a></h4>
+<ul class="simple">
+<li><p><strong>Camera Image</strong>: Subscribes to <code class="docutils literal notranslate"><span class="pre">color_raw_topic</span></code> (sensor_msgs/Image)</p></li>
+<li><p><strong>Configuration</strong>: ROS parameters for encoder settings</p></li>
+</ul>
+</section>
+<section id="outputs">
+<h4>Outputs<a class="headerlink" href="#outputs" title="Link to this heading">#</a></h4>
+<ul class="simple">
+<li><p><strong>Features</strong>: Publishes to <code class="docutils literal notranslate"><span class="pre">/robot_name/features_robot_name</span></code> (neuromesh_msgs/NeuroMeshFeatures)</p></li>
+</ul>
+</section>
+<section id="core-components">
+<h4>Core Components<a class="headerlink" href="#core-components" title="Link to this heading">#</a></h4>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">VggtEncoderNode</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="k">public</span><span class="w"> </span><span class="n">rclcpp</span><span class="o">::</span><span class="n">Node</span><span class="w"> </span><span class="p">{</span>
+<span class="k">private</span><span class="o">:</span>
+<span class="w">    </span><span class="c1">// Subscriptions</span>
+<span class="w">    </span><span class="n">rclcpp</span><span class="o">::</span><span class="n">Subscription</span><span class="o">&lt;</span><span class="n">sensor_msgs</span><span class="o">::</span><span class="n">msg</span><span class="o">::</span><span class="n">Image</span><span class="o">&gt;::</span><span class="n">SharedPtr</span><span class="w"> </span><span class="n">camera_sub_</span><span class="p">;</span>
+<span class="w">    </span>
+<span class="w">    </span><span class="c1">// Publishers</span>
+<span class="w">    </span><span class="n">rclcpp</span><span class="o">::</span><span class="n">Publisher</span><span class="o">&lt;</span><span class="n">neuromesh_msgs</span><span class="o">::</span><span class="n">msg</span><span class="o">::</span><span class="n">NeuroMeshFeatures</span><span class="o">&gt;::</span><span class="n">SharedPtr</span><span class="w"> </span><span class="n">feature_pub_</span><span class="p">;</span>
+<span class="w">    </span>
+<span class="w">    </span><span class="c1">// TensorRT client</span>
+<span class="w">    </span><span class="n">rclcpp</span><span class="o">::</span><span class="n">Client</span><span class="o">&lt;</span><span class="n">neuromesh_interfaces</span><span class="o">::</span><span class="n">srv</span><span class="o">::</span><span class="n">TensorrtRequest</span><span class="o">&gt;::</span><span class="n">SharedPtr</span><span class="w"> </span><span class="n">tensorrt_client_</span><span class="p">;</span>
+<span class="w">    </span>
+<span class="w">    </span><span class="c1">// Timer for periodic processing</span>
+<span class="w">    </span><span class="n">rclcpp</span><span class="o">::</span><span class="n">TimerBase</span><span class="o">::</span><span class="n">SharedPtr</span><span class="w"> </span><span class="n">encoder_timer_</span><span class="p">;</span>
+<span class="w">    </span>
+<span class="w">    </span><span class="c1">// Configuration</span>
+<span class="w">    </span><span class="kt">double</span><span class="w"> </span><span class="n">encoder_cycle_interval_</span><span class="p">;</span><span class="w">  </span><span class="c1">// Configurable processing interval</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="w"> </span><span class="n">encoder_model_path_</span><span class="p">;</span>
+<span class="w">    </span>
+<span class="w">    </span><span class="c1">// State management</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">sensor_msgs</span><span class="o">::</span><span class="n">msg</span><span class="o">::</span><span class="n">Image</span><span class="o">&gt;</span><span class="w"> </span><span class="n">latest_image_</span><span class="p">;</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">mutex</span><span class="w"> </span><span class="n">image_mutex_</span><span class="p">;</span>
+<span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">processing_in_progress_</span><span class="p">;</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+</section>
+<section id="key-methods">
+<h4>Key Methods<a class="headerlink" href="#key-methods" title="Link to this heading">#</a></h4>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">camera_callback()</span></code>: Stores latest image (non-blocking)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">encoder_timer_callback()</span></code>: Triggers encoding at configured intervals</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">process_image()</span></code>: Preprocesses image and calls TensorRT</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">publish_features()</span></code>: Publishes encoded features with timestamp</p></li>
+</ul>
+</section>
+</section>
+<section id="vggt-decoder-node">
+<h3>2. VGGT Decoder Node<a class="headerlink" href="#vggt-decoder-node" title="Link to this heading">#</a></h3>
+<section id="id1">
+<h4>Purpose<a class="headerlink" href="#id1" title="Link to this heading">#</a></h4>
+<p>Aggregates features from N robots and generates depth maps, point clouds, and pose information.</p>
+</section>
+<section id="id2">
+<h4>Inputs<a class="headerlink" href="#id2" title="Link to this heading">#</a></h4>
+<ul class="simple">
+<li><p><strong>Self Features</strong>: From local encoder node</p></li>
+<li><p><strong>Neighbor Features</strong>: From other robots’ encoder nodes</p></li>
+<li><p><strong>Configuration</strong>: ROS parameters for decoder settings</p></li>
+</ul>
+</section>
+<section id="id3">
+<h4>Outputs<a class="headerlink" href="#id3" title="Link to this heading">#</a></h4>
+<ul class="simple">
+<li><p><strong>Depth Images</strong>: <code class="docutils literal notranslate"><span class="pre">/robot_name/depth_robotX</span></code> (sensor_msgs/Image)</p></li>
+<li><p><strong>Point Clouds</strong>: <code class="docutils literal notranslate"><span class="pre">/robot_name/pointcloud_current</span></code>, <code class="docutils literal notranslate"><span class="pre">/robot_name/pointcloud_neighbor</span></code></p></li>
+<li><p><strong>RGB Point Clouds</strong>: With color information</p></li>
+<li><p><strong>Pose Information</strong>: If needed</p></li>
+</ul>
+</section>
+<section id="id4">
+<h4>Core Components<a class="headerlink" href="#id4" title="Link to this heading">#</a></h4>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">VggtDecoderNode</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="k">public</span><span class="w"> </span><span class="n">rclcpp</span><span class="o">::</span><span class="n">Node</span><span class="w"> </span><span class="p">{</span>
+<span class="k">private</span><span class="o">:</span>
+<span class="w">    </span><span class="c1">// Subscriptions</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">map</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="p">,</span><span class="w"> </span><span class="n">rclcpp</span><span class="o">::</span><span class="n">Subscription</span><span class="o">&lt;</span><span class="n">neuromesh_msgs</span><span class="o">::</span><span class="n">msg</span><span class="o">::</span><span class="n">NeuroMeshFeatures</span><span class="o">&gt;::</span><span class="n">SharedPtr</span><span class="o">&gt;</span><span class="w"> </span><span class="n">feature_subs_</span><span class="p">;</span>
+<span class="w">    </span>
+<span class="w">    </span><span class="c1">// Publishers</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">map</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="p">,</span><span class="w"> </span><span class="n">rclcpp</span><span class="o">::</span><span class="n">Publisher</span><span class="o">&lt;</span><span class="n">sensor_msgs</span><span class="o">::</span><span class="n">msg</span><span class="o">::</span><span class="n">Image</span><span class="o">&gt;::</span><span class="n">SharedPtr</span><span class="o">&gt;</span><span class="w"> </span><span class="n">depth_pubs_</span><span class="p">;</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">map</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="p">,</span><span class="w"> </span><span class="n">rclcpp</span><span class="o">::</span><span class="n">Publisher</span><span class="o">&lt;</span><span class="n">sensor_msgs</span><span class="o">::</span><span class="n">msg</span><span class="o">::</span><span class="n">PointCloud2</span><span class="o">&gt;::</span><span class="n">SharedPtr</span><span class="o">&gt;</span><span class="w"> </span><span class="n">pointcloud_pubs_</span><span class="p">;</span>
+<span class="w">    </span>
+<span class="w">    </span><span class="c1">// TensorRT client</span>
+<span class="w">    </span><span class="n">rclcpp</span><span class="o">::</span><span class="n">Client</span><span class="o">&lt;</span><span class="n">neuromesh_interfaces</span><span class="o">::</span><span class="n">srv</span><span class="o">::</span><span class="n">TensorrtRequest</span><span class="o">&gt;::</span><span class="n">SharedPtr</span><span class="w"> </span><span class="n">tensorrt_client_</span><span class="p">;</span>
+<span class="w">    </span>
+<span class="w">    </span><span class="c1">// Feature buffer</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">map</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="p">,</span><span class="w"> </span><span class="n">neuromesh_msgs</span><span class="o">::</span><span class="n">msg</span><span class="o">::</span><span class="n">NeuroMeshFeatures</span><span class="o">&gt;</span><span class="w"> </span><span class="n">feature_buffer_</span><span class="p">;</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">map</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="p">,</span><span class="w"> </span><span class="n">rclcpp</span><span class="o">::</span><span class="n">Time</span><span class="o">&gt;</span><span class="w"> </span><span class="n">feature_timestamps_</span><span class="p">;</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">mutex</span><span class="w"> </span><span class="n">feature_mutex_</span><span class="p">;</span>
+<span class="w">    </span>
+<span class="w">    </span><span class="c1">// Configuration</span>
+<span class="w">    </span><span class="kt">double</span><span class="w"> </span><span class="n">decoder_cycle_interval_</span><span class="p">;</span>
+<span class="w">    </span><span class="kt">double</span><span class="w"> </span><span class="n">feature_age_threshold_</span><span class="p">;</span><span class="w">  </span><span class="c1">// Max age for neighbor features (default: 10s)</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&gt;</span><span class="w"> </span><span class="n">robot_names_</span><span class="p">;</span>
+<span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">num_robots_</span><span class="p">;</span><span class="w">  </span><span class="c1">// Configurable N</span>
+<span class="w">    </span>
+<span class="w">    </span><span class="c1">// Timer for processing</span>
+<span class="w">    </span><span class="n">rclcpp</span><span class="o">::</span><span class="n">TimerBase</span><span class="o">::</span><span class="n">SharedPtr</span><span class="w"> </span><span class="n">decoder_timer_</span><span class="p">;</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+</section>
+<section id="id5">
+<h4>Key Methods<a class="headerlink" href="#id5" title="Link to this heading">#</a></h4>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">feature_callback()</span></code>: Updates feature buffer for each robot</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">decoder_timer_callback()</span></code>: Triggers decoding at intervals</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">aggregate_features()</span></code>: Builds decoder tensor from N robot features</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">check_feature_freshness()</span></code>: Validates feature timestamps</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">process_decoder_output()</span></code>: Converts tensor outputs to ROS messages</p></li>
+</ul>
+</section>
+</section>
+<section id="feature-aggregation-strategy">
+<h3>3. Feature Aggregation Strategy<a class="headerlink" href="#feature-aggregation-strategy" title="Link to this heading">#</a></h3>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">float</span><span class="o">&gt;</span><span class="w"> </span><span class="n">VggtDecoderNode</span><span class="o">::</span><span class="n">aggregate_features</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">lock_guard</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">mutex</span><span class="o">&gt;</span><span class="w"> </span><span class="n">lock</span><span class="p">(</span><span class="n">feature_mutex_</span><span class="p">);</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">float</span><span class="o">&gt;</span><span class="w"> </span><span class="n">aggregated_tensor</span><span class="p">;</span>
+<span class="w">    </span>
+<span class="w">    </span><span class="c1">// Get current robot&#39;s features (always index 0)</span>
+<span class="w">    </span><span class="k">auto</span><span class="w"> </span><span class="n">self_features</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">feature_buffer_</span><span class="p">[</span><span class="n">robot_name_</span><span class="p">];</span>
+<span class="w">    </span>
+<span class="w">    </span><span class="c1">// Aggregate features from all robots</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">num_robots_</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">i</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="c1">// Always use self features for index 0</span>
+<span class="w">            </span><span class="n">aggregated_tensor</span><span class="p">.</span><span class="n">insert</span><span class="p">(</span><span class="n">aggregated_tensor</span><span class="p">.</span><span class="n">end</span><span class="p">(),</span><span class="w"> </span>
+<span class="w">                                   </span><span class="n">self_features</span><span class="p">.</span><span class="n">data</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span><span class="w"> </span>
+<span class="w">                                   </span><span class="n">self_features</span><span class="p">.</span><span class="n">data</span><span class="p">.</span><span class="n">end</span><span class="p">());</span>
+<span class="w">        </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="c1">// Use neighbor features or fallback to self</span>
+<span class="w">            </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="w"> </span><span class="n">neighbor_name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">robot_names_</span><span class="p">[</span><span class="n">i</span><span class="p">];</span>
+<span class="w">            </span>
+<span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">feature_buffer_</span><span class="p">.</span><span class="n">count</span><span class="p">(</span><span class="n">neighbor_name</span><span class="p">)</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                </span><span class="k">auto</span><span class="w"> </span><span class="n">age</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">this</span><span class="o">-&gt;</span><span class="n">now</span><span class="p">()</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">feature_timestamps_</span><span class="p">[</span><span class="n">neighbor_name</span><span class="p">];</span>
+<span class="w">                </span>
+<span class="w">                </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">age</span><span class="p">.</span><span class="n">seconds</span><span class="p">()</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">feature_age_threshold_</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                    </span><span class="c1">// Use neighbor features</span>
+<span class="w">                    </span><span class="n">aggregated_tensor</span><span class="p">.</span><span class="n">insert</span><span class="p">(</span><span class="n">aggregated_tensor</span><span class="p">.</span><span class="n">end</span><span class="p">(),</span>
+<span class="w">                                           </span><span class="n">feature_buffer_</span><span class="p">[</span><span class="n">neighbor_name</span><span class="p">].</span><span class="n">data</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span>
+<span class="w">                                           </span><span class="n">feature_buffer_</span><span class="p">[</span><span class="n">neighbor_name</span><span class="p">].</span><span class="n">data</span><span class="p">.</span><span class="n">end</span><span class="p">());</span>
+<span class="w">                </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                    </span><span class="c1">// Features too old, use self features</span>
+<span class="w">                    </span><span class="n">RCLCPP_WARN</span><span class="p">(</span><span class="k">this</span><span class="o">-&gt;</span><span class="n">get_logger</span><span class="p">(),</span><span class="w"> </span>
+<span class="w">                              </span><span class="s">&quot;Features from %s are %.2f seconds old (threshold: %.2f). Using self features.&quot;</span><span class="p">,</span>
+<span class="w">                              </span><span class="n">neighbor_name</span><span class="p">.</span><span class="n">c_str</span><span class="p">(),</span><span class="w"> </span><span class="n">age</span><span class="p">.</span><span class="n">seconds</span><span class="p">(),</span><span class="w"> </span><span class="n">feature_age_threshold_</span><span class="p">);</span>
+<span class="w">                    </span><span class="n">aggregated_tensor</span><span class="p">.</span><span class="n">insert</span><span class="p">(</span><span class="n">aggregated_tensor</span><span class="p">.</span><span class="n">end</span><span class="p">(),</span>
+<span class="w">                                           </span><span class="n">self_features</span><span class="p">.</span><span class="n">data</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span>
+<span class="w">                                           </span><span class="n">self_features</span><span class="p">.</span><span class="n">data</span><span class="p">.</span><span class="n">end</span><span class="p">());</span>
+<span class="w">                </span><span class="p">}</span>
+<span class="w">            </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                </span><span class="c1">// No features available, use self features</span>
+<span class="w">                </span><span class="n">RCLCPP_WARN</span><span class="p">(</span><span class="k">this</span><span class="o">-&gt;</span><span class="n">get_logger</span><span class="p">(),</span><span class="w"> </span>
+<span class="w">                          </span><span class="s">&quot;No features available from %s. Using self features.&quot;</span><span class="p">,</span>
+<span class="w">                          </span><span class="n">neighbor_name</span><span class="p">.</span><span class="n">c_str</span><span class="p">());</span>
+<span class="w">                </span><span class="n">aggregated_tensor</span><span class="p">.</span><span class="n">insert</span><span class="p">(</span><span class="n">aggregated_tensor</span><span class="p">.</span><span class="n">end</span><span class="p">(),</span>
+<span class="w">                                       </span><span class="n">self_features</span><span class="p">.</span><span class="n">data</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span>
+<span class="w">                                       </span><span class="n">self_features</span><span class="p">.</span><span class="n">data</span><span class="p">.</span><span class="n">end</span><span class="p">());</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">aggregated_tensor</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="configuration-system">
+<h2>Configuration System<a class="headerlink" href="#configuration-system" title="Link to this heading">#</a></h2>
+<section id="unified-configuration-file">
+<h3>Unified Configuration File<a class="headerlink" href="#unified-configuration-file" title="Link to this heading">#</a></h3>
+<p>Create a YAML configuration file that both nodes can reference:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># config/vggt_config.yaml</span>
+<span class="nt">vggt</span><span class="p">:</span>
+<span class="w">  </span><span class="c1"># Encoder settings</span>
+<span class="w">  </span><span class="nt">encoder</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">cycle_interval</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3.0</span><span class="w">  </span><span class="c1"># seconds</span>
+<span class="w">    </span><span class="nt">image_width</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">518</span>
+<span class="w">    </span><span class="nt">image_height</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">392</span>
+<span class="w">    </span><span class="nt">model_path</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;$(find</span><span class="nv"> </span><span class="s">neuromesh_platform_r2)/../../tensorrt_engine/models/vggt_onnx_2x/vggt_image_encoder_2x.engine&quot;</span>
+<span class="w">    </span>
+<span class="w">  </span><span class="c1"># Decoder settings</span>
+<span class="w">  </span><span class="nt">decoder</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">cycle_interval</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3.0</span><span class="w">  </span><span class="c1"># seconds</span>
+<span class="w">    </span><span class="nt">feature_age_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10.0</span><span class="w">  </span><span class="c1"># seconds</span>
+<span class="w">    </span><span class="nt">num_robots</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span><span class="w">  </span><span class="c1"># Configurable N</span>
+<span class="w">    </span><span class="nt">model_path</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;$(find</span><span class="nv"> </span><span class="s">neuromesh_platform_r2)/../../tensorrt_engine/models/vggt_onnx_2x/vggt_aggregator_2x.engine&quot;</span>
+<span class="w">    </span>
+<span class="w">  </span><span class="c1"># Common settings</span>
+<span class="w">  </span><span class="nt">robot_names</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;khonsu&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;anubis&quot;</span><span class="p p-Indicator">]</span><span class="w">  </span><span class="c1"># List of all robots</span>
+<span class="w">  </span>
+<span class="w">  </span><span class="c1"># TensorRT service settings</span>
+<span class="w">  </span><span class="nt">tensorrt</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">service_name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;tensorrt_request&quot;</span>
+<span class="w">    </span><span class="nt">timeout</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30.0</span><span class="w">  </span><span class="c1"># seconds</span>
+</pre></div>
+</div>
+</section>
+<section id="launch-file-structure">
+<h3>Launch File Structure<a class="headerlink" href="#launch-file-structure" title="Link to this heading">#</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># launch/vggt_separated_launch.py</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ament_index_python.packages</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_package_share_directory</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">launch</span><span class="w"> </span><span class="kn">import</span> <span class="n">LaunchDescription</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">launch.actions</span><span class="w"> </span><span class="kn">import</span> <span class="n">DeclareLaunchArgument</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">launch.substitutions</span><span class="w"> </span><span class="kn">import</span> <span class="n">LaunchConfiguration</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">launch_ros.actions</span><span class="w"> </span><span class="kn">import</span> <span class="n">Node</span><span class="p">,</span> <span class="n">LoadComposableNodes</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">launch_ros.descriptions</span><span class="w"> </span><span class="kn">import</span> <span class="n">ComposableNode</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">generate_launch_description</span><span class="p">():</span>
+    <span class="c1"># Get package directory</span>
+    <span class="n">pkg_dir</span> <span class="o">=</span> <span class="n">get_package_share_directory</span><span class="p">(</span><span class="s1">&#39;neuromesh_platform_r2&#39;</span><span class="p">)</span>
+    <span class="n">config_file</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">pkg_dir</span><span class="p">,</span> <span class="s1">&#39;config&#39;</span><span class="p">,</span> <span class="s1">&#39;vggt_config.yaml&#39;</span><span class="p">)</span>
+    
+    <span class="c1"># Declare launch arguments</span>
+    <span class="n">robot_name</span> <span class="o">=</span> <span class="n">LaunchConfiguration</span><span class="p">(</span><span class="s1">&#39;robot_name&#39;</span><span class="p">)</span>
+    <span class="n">color_raw_topic</span> <span class="o">=</span> <span class="n">LaunchConfiguration</span><span class="p">(</span><span class="s1">&#39;color_raw_topic&#39;</span><span class="p">)</span>
+    
+    <span class="c1"># Component container</span>
+    <span class="n">container</span> <span class="o">=</span> <span class="n">Node</span><span class="p">(</span>
+        <span class="n">package</span><span class="o">=</span><span class="s1">&#39;rclcpp_components&#39;</span><span class="p">,</span>
+        <span class="n">executable</span><span class="o">=</span><span class="s1">&#39;component_container_mt&#39;</span><span class="p">,</span>
+        <span class="n">name</span><span class="o">=</span><span class="s1">&#39;vggt_container&#39;</span><span class="p">,</span>
+        <span class="n">output</span><span class="o">=</span><span class="s1">&#39;screen&#39;</span><span class="p">,</span>
+        <span class="n">parameters</span><span class="o">=</span><span class="p">[</span><span class="n">config_file</span><span class="p">]</span>
+    <span class="p">)</span>
+    
+    <span class="c1"># Load encoder node</span>
+    <span class="n">encoder_node</span> <span class="o">=</span> <span class="n">ComposableNode</span><span class="p">(</span>
+        <span class="n">package</span><span class="o">=</span><span class="s1">&#39;neuromesh_platform_r2&#39;</span><span class="p">,</span>
+        <span class="n">plugin</span><span class="o">=</span><span class="s1">&#39;neuromesh::VggtEncoderNode&#39;</span><span class="p">,</span>
+        <span class="n">name</span><span class="o">=</span><span class="s1">&#39;vggt_encoder&#39;</span><span class="p">,</span>
+        <span class="n">parameters</span><span class="o">=</span><span class="p">[</span>
+            <span class="n">config_file</span><span class="p">,</span>
+            <span class="p">{</span><span class="s1">&#39;robot_name&#39;</span><span class="p">:</span> <span class="n">robot_name</span><span class="p">,</span>
+             <span class="s1">&#39;color_raw_topic&#39;</span><span class="p">:</span> <span class="n">color_raw_topic</span><span class="p">}</span>
+        <span class="p">],</span>
+        <span class="n">extra_arguments</span><span class="o">=</span><span class="p">[{</span><span class="s1">&#39;use_intra_process_comms&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}]</span>
+    <span class="p">)</span>
+    
+    <span class="c1"># Load decoder node</span>
+    <span class="n">decoder_node</span> <span class="o">=</span> <span class="n">ComposableNode</span><span class="p">(</span>
+        <span class="n">package</span><span class="o">=</span><span class="s1">&#39;neuromesh_platform_r2&#39;</span><span class="p">,</span>
+        <span class="n">plugin</span><span class="o">=</span><span class="s1">&#39;neuromesh::VggtDecoderNode&#39;</span><span class="p">,</span>
+        <span class="n">name</span><span class="o">=</span><span class="s1">&#39;vggt_decoder&#39;</span><span class="p">,</span>
+        <span class="n">parameters</span><span class="o">=</span><span class="p">[</span>
+            <span class="n">config_file</span><span class="p">,</span>
+            <span class="p">{</span><span class="s1">&#39;robot_name&#39;</span><span class="p">:</span> <span class="n">robot_name</span><span class="p">}</span>
+        <span class="p">],</span>
+        <span class="n">extra_arguments</span><span class="o">=</span><span class="p">[{</span><span class="s1">&#39;use_intra_process_comms&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}]</span>
+    <span class="p">)</span>
+    
+    <span class="c1"># Load components</span>
+    <span class="n">load_components</span> <span class="o">=</span> <span class="n">LoadComposableNodes</span><span class="p">(</span>
+        <span class="n">target_container</span><span class="o">=</span><span class="s1">&#39;vggt_container&#39;</span><span class="p">,</span>
+        <span class="n">composable_node_descriptions</span><span class="o">=</span><span class="p">[</span><span class="n">encoder_node</span><span class="p">,</span> <span class="n">decoder_node</span><span class="p">]</span>
+    <span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">LaunchDescription</span><span class="p">([</span>
+        <span class="n">DeclareLaunchArgument</span><span class="p">(</span><span class="s1">&#39;robot_name&#39;</span><span class="p">,</span> <span class="n">default_value</span><span class="o">=</span><span class="s1">&#39;khonsu&#39;</span><span class="p">),</span>
+        <span class="n">DeclareLaunchArgument</span><span class="p">(</span><span class="s1">&#39;color_raw_topic&#39;</span><span class="p">,</span> <span class="n">default_value</span><span class="o">=</span><span class="s1">&#39;/khonsu/color_raw&#39;</span><span class="p">),</span>
+        <span class="n">container</span><span class="p">,</span>
+        <span class="n">load_components</span>
+    <span class="p">])</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="implementation-roadmap">
+<h2>Implementation Roadmap<a class="headerlink" href="#implementation-roadmap" title="Link to this heading">#</a></h2>
+<section id="phase-1-infrastructure-setup-week-1">
+<h3>Phase 1: Infrastructure Setup (Week 1)<a class="headerlink" href="#phase-1-infrastructure-setup-week-1" title="Link to this heading">#</a></h3>
+<ol class="arabic simple">
+<li><p>Create new header files:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">include/neuromesh_platform_r2/vggt_encoder_node.h</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">include/neuromesh_platform_r2/vggt_decoder_node.h</span></code></p></li>
+</ul>
+</li>
+<li><p>Create base implementations with minimal functionality</p></li>
+<li><p>Set up configuration file structure</p></li>
+<li><p>Create unit tests framework</p></li>
+</ol>
+</section>
+<section id="phase-2-encoder-node-implementation-week-2">
+<h3>Phase 2: Encoder Node Implementation (Week 2)<a class="headerlink" href="#phase-2-encoder-node-implementation-week-2" title="Link to this heading">#</a></h3>
+<ol class="arabic simple">
+<li><p>Implement camera subscription and buffering</p></li>
+<li><p>Port image preprocessing from current implementation</p></li>
+<li><p>Integrate TensorRT service client for encoder</p></li>
+<li><p>Implement feature publishing with proper timestamps</p></li>
+<li><p>Add configurable processing intervals</p></li>
+<li><p>Test encoder node independently</p></li>
+</ol>
+</section>
+<section id="phase-3-decoder-node-implementation-week-3">
+<h3>Phase 3: Decoder Node Implementation (Week 3)<a class="headerlink" href="#phase-3-decoder-node-implementation-week-3" title="Link to this heading">#</a></h3>
+<ol class="arabic simple">
+<li><p>Implement multi-robot feature subscription</p></li>
+<li><p>Port feature aggregation logic with N-robot support</p></li>
+<li><p>Implement feature freshness checking with warnings</p></li>
+<li><p>Integrate TensorRT service client for decoder</p></li>
+<li><p>Port output processing (depth, pointcloud generation)</p></li>
+<li><p>Test decoder node with simulated features</p></li>
+</ol>
+</section>
+<section id="phase-4-integration-and-testing-week-4">
+<h3>Phase 4: Integration and Testing (Week 4)<a class="headerlink" href="#phase-4-integration-and-testing-week-4" title="Link to this heading">#</a></h3>
+<ol class="arabic simple">
+<li><p>Create integrated launch files</p></li>
+<li><p>Test end-to-end system with 2 robots</p></li>
+<li><p>Test with N robots (N &gt; 2)</p></li>
+<li><p>Verify backward compatibility with existing topics</p></li>
+<li><p>Performance benchmarking vs monolithic node</p></li>
+<li><p>Documentation and code cleanup</p></li>
+</ol>
+</section>
+<section id="phase-5-optional-enhancements">
+<h3>Phase 5: Optional Enhancements<a class="headerlink" href="#phase-5-optional-enhancements" title="Link to this heading">#</a></h3>
+<ol class="arabic simple">
+<li><p>Implement health monitoring/watchdog system</p></li>
+<li><p>Add dynamic reconfiguration support</p></li>
+<li><p>Create diagnostic publishers</p></li>
+<li><p>Add feature quality metrics</p></li>
+<li><p>Implement feature compression for bandwidth optimization</p></li>
+</ol>
+</section>
+</section>
+<section id="migration-strategy">
+<h2>Migration Strategy<a class="headerlink" href="#migration-strategy" title="Link to this heading">#</a></h2>
+<section id="backward-compatibility">
+<h3>Backward Compatibility<a class="headerlink" href="#backward-compatibility" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p>Maintain existing topic names and message formats</p></li>
+<li><p>Keep same output formats for depth images and point clouds</p></li>
+<li><p>Ensure launch file parameters are compatible</p></li>
+</ul>
+</section>
+<section id="gradual-migration">
+<h3>Gradual Migration<a class="headerlink" href="#gradual-migration" title="Link to this heading">#</a></h3>
+<ol class="arabic simple">
+<li><p>Deploy new nodes alongside existing monolithic node</p></li>
+<li><p>Compare outputs to ensure consistency</p></li>
+<li><p>Switch over once validated</p></li>
+<li><p>Deprecate monolithic node</p></li>
+</ol>
+</section>
+</section>
+<section id="testing-strategy">
+<h2>Testing Strategy<a class="headerlink" href="#testing-strategy" title="Link to this heading">#</a></h2>
+<section id="unit-tests">
+<h3>Unit Tests<a class="headerlink" href="#unit-tests" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p>Test encoder preprocessing independently</p></li>
+<li><p>Test decoder tensor building with various feature combinations</p></li>
+<li><p>Test feature age validation logic</p></li>
+</ul>
+</section>
+<section id="integration-tests">
+<h3>Integration Tests<a class="headerlink" href="#integration-tests" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p>Test encoder-decoder communication</p></li>
+<li><p>Test multi-robot feature aggregation</p></li>
+<li><p>Test failure scenarios (missing features, old features)</p></li>
+</ul>
+</section>
+<section id="system-tests">
+<h3>System Tests<a class="headerlink" href="#system-tests" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p>End-to-end testing with real camera data</p></li>
+<li><p>Multi-robot coordination testing</p></li>
+<li><p>Performance comparison with monolithic approach</p></li>
+</ul>
+</section>
+</section>
+<section id="benefits-of-this-design">
+<h2>Benefits of This Design<a class="headerlink" href="#benefits-of-this-design" title="Link to this heading">#</a></h2>
+<ol class="arabic simple">
+<li><p><strong>Modularity</strong>: Clean separation of encoder and decoder logic</p></li>
+<li><p><strong>Scalability</strong>: Easy to extend to N robots</p></li>
+<li><p><strong>Maintainability</strong>: Simpler codebase with focused responsibilities</p></li>
+<li><p><strong>Flexibility</strong>: Independent configuration and deployment</p></li>
+<li><p><strong>Performance</strong>: No async scheduling conflicts</p></li>
+<li><p><strong>Debugging</strong>: Easier to isolate issues to specific nodes</p></li>
+</ol>
+</section>
+<section id="conclusion">
+<h2>Conclusion<a class="headerlink" href="#conclusion" title="Link to this heading">#</a></h2>
+<p>This refactoring will transform the VGGT system into a more modular, scalable architecture while maintaining backward compatibility. The separation of encoder and decoder nodes eliminates the current async scheduling issues and provides a cleaner foundation for future enhancements.</p>
+</section>
+</section>
+
+
+                </article>
+              
+
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item"><div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> Contents
+  </div>
+  <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#executive-summary">Executive Summary</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#architecture-overview">Architecture Overview</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#current-architecture-monolithic">Current Architecture (Monolithic)</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#proposed-architecture-separated">Proposed Architecture (Separated)</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#node-design-details">Node Design Details</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#vggt-encoder-node">1. VGGT Encoder Node</a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#purpose">Purpose</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#inputs">Inputs</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#outputs">Outputs</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#core-components">Core Components</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#key-methods">Key Methods</a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#vggt-decoder-node">2. VGGT Decoder Node</a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#id1">Purpose</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#id2">Inputs</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#id3">Outputs</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#id4">Core Components</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#id5">Key Methods</a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#feature-aggregation-strategy">3. Feature Aggregation Strategy</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#configuration-system">Configuration System</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#unified-configuration-file">Unified Configuration File</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#launch-file-structure">Launch File Structure</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#implementation-roadmap">Implementation Roadmap</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phase-1-infrastructure-setup-week-1">Phase 1: Infrastructure Setup (Week 1)</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phase-2-encoder-node-implementation-week-2">Phase 2: Encoder Node Implementation (Week 2)</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phase-3-decoder-node-implementation-week-3">Phase 3: Decoder Node Implementation (Week 3)</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phase-4-integration-and-testing-week-4">Phase 4: Integration and Testing (Week 4)</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phase-5-optional-enhancements">Phase 5: Optional Enhancements</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#migration-strategy">Migration Strategy</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#backward-compatibility">Backward Compatibility</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#gradual-migration">Gradual Migration</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#testing-strategy">Testing Strategy</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#unit-tests">Unit Tests</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#integration-tests">Integration Tests</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#system-tests">System Tests</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#benefits-of-this-design">Benefits of This Design</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#conclusion">Conclusion</a></li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+<div class="bd-footer-content__inner container">
+  
+  <div class="footer-item">
+    
+<p class="component-author">
+By Long Quang
+</p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+
+  <p class="copyright">
+    
+      © Copyright 2026, Long Quang.
+      <br/>
+    
+  </p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+</div>
+          </footer>
+        
+
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+  </footer>
+  </body>
+</html>

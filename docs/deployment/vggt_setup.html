@@ -1,0 +1,705 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>VGGT Setup &#8212; NeuroMesh</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/sphinx-book-theme.css?v=3c74b3bc" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../_static/documentation_options.js?v=f9c1cefe"></script>
+    <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'deployment/vggt_setup';</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script src="../_static/mermaid-init.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="VGGT Encoder-Decoder Separation Design" href="../design/vggt_refactoring.html" />
+    <link rel="prev" title="Real-World Deployment" href="real_world.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search..."
+         aria-label="Search..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">NeuroMesh</p>
+  
+</a></div>
+        <div class="sidebar-primary-item">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button></div>
+        <div class="sidebar-primary-item"><nav class="bd-links bd-docs-nav" aria-label="Main">
+    <div class="bd-toc-item navbar-nav active">
+        <p aria-level="2" class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../build.html">Build Instructions</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Architecture</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../architecture.html">System Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../packages/neuromesh_interfaces.html"><code class="docutils literal notranslate"><span class="pre">neuromesh_interfaces</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../packages/engine_interface.html"><code class="docutils literal notranslate"><span class="pre">engine_interface</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../packages/tensorrt_engine.html"><code class="docutils literal notranslate"><span class="pre">tensorrt_engine</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../packages/onnx_engine.html"><code class="docutils literal notranslate"><span class="pre">onnx_engine</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../packages/neuromesh_platform_r2.html"><code class="docutils literal notranslate"><span class="pre">neuromesh_platform_r2</span></code></a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Deployment</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="real_world.html">Real-World Deployment</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">VGGT Setup</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Design Documents</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../design/vggt_refactoring.html">VGGT Encoder-Decoder Separation Design</a></li>
+</ul>
+
+    </div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+
+<div class="sbt-scroll-pixel-helper"></div>
+
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item"><button class="sidebar-toggle primary-toggle btn btn-sm" title="Toggle primary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <span class="fa-solid fa-bars"></span>
+</button></div>
+      
+    </div>
+  
+  
+    <div class="header-article-items__end">
+      
+        <div class="header-article-item">
+
+<div class="article-header-buttons">
+
+
+<a href="https://github.com/arplaboratory/neuromesh" target="_blank"
+   class="btn btn-sm btn-source-repository-button"
+   title="Source repository"
+   data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fab fa-github"></i>
+  </span>
+
+</a>
+
+
+
+
+
+
+<div class="dropdown dropdown-download-buttons">
+  <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Download this page">
+    <i class="fas fa-download"></i>
+  </button>
+  <ul class="dropdown-menu">
+      
+      
+      
+      <li><a href="../_sources/deployment/vggt_setup.md" target="_blank"
+   class="btn btn-sm btn-download-source-button dropdown-item"
+   title="Download source file"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file"></i>
+  </span>
+<span class="btn__text-container">.md</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li>
+<button onclick="window.print()"
+  class="btn btn-sm btn-download-pdf-button dropdown-item"
+  title="Print to PDF"
+  data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file-pdf"></i>
+  </span>
+<span class="btn__text-container">.pdf</span>
+</button>
+</li>
+      
+  </ul>
+</div>
+
+
+
+
+<button onclick="toggleFullScreen()"
+  class="btn btn-sm btn-fullscreen-button pst-navbar-icon"
+  title="Fullscreen mode"
+  data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-expand"></i>
+  </span>
+
+</button>
+
+
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button>
+
+
+<button class="btn btn-sm pst-navbar-icon search-button search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass fa-lg"></i>
+</button>
+<button class="sidebar-toggle secondary-toggle btn btn-sm pst-navbar-icon" title="Toggle secondary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="fa-solid fa-list"></span>
+</button>
+</div></div>
+      
+    </div>
+  
+</div>
+</div>
+              
+              
+
+<div id="jb-print-docs-body" class="onlyprint">
+    <h1>VGGT Setup</h1>
+    <!-- Table of contents -->
+    <div id="print-main-content">
+        <div id="jb-print-toc">
+            
+            <div>
+                <h2> Contents </h2>
+            </div>
+            <nav aria-label="Page">
+                <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#model-architecture">Model Architecture</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#encoder-vggt-image-encoder-2x-engine">Encoder: <code class="docutils literal notranslate"><span class="pre">vggt_image_encoder_2x.engine</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#decoder-aggregator-vggt-aggregator-2x-engine">Decoder (Aggregator): <code class="docutils literal notranslate"><span class="pre">vggt_aggregator_2x.engine</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#image-preprocessing">Image Preprocessing</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#configuration">Configuration</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#launch">Launch</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#monolithic-node-encoder-decoder-in-one-process">Monolithic Node (encoder + decoder in one process)</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#separated-encoder-decoder-nodes">Separated Encoder + Decoder Nodes</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#via-script">Via Script</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#published-topics">Published Topics</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#default-robot-names">Default Robot Names</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#coordinate-frames">Coordinate Frames</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#notes">Notes</a></li>
+</ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="vggt-setup">
+<h1>VGGT Setup<a class="headerlink" href="#vggt-setup" title="Link to this heading">#</a></h1>
+<p>VGGT (Visual Geometry Grounded Transformation) enables multi-robot collaborative
+depth estimation and 3D reconstruction from camera images.</p>
+<section id="model-architecture">
+<h2>Model Architecture<a class="headerlink" href="#model-architecture" title="Link to this heading">#</a></h2>
+<p>The VGGT pipeline uses two TensorRT models:</p>
+<div class="highlight-mermaid notranslate"><div class="highlight"><pre><span></span>graph LR
+    IMG[&quot;Camera Image\n(1×3×392×518)&quot;] --&gt; ENC[&quot;Encoder\nvggt_image_encoder_2x.engine&quot;]
+    ENC --&gt; FEAT[&quot;patch_tokens\n(1×1036×1024)&quot;]
+    FEAT --&gt; AGG
+    PEER[&quot;Peer Features\n(1×1036×1024)&quot;] --&gt; AGG[&quot;Aggregator (Decoder)\nvggt_aggregator_2x.engine&quot;]
+    AGG --&gt; DEPTH[&quot;depth\n(1×2×392×518×1)&quot;]
+    AGG --&gt; PTS[&quot;world_points\n(1×2×392×518×3)&quot;]
+    AGG --&gt; CONF[&quot;depth_conf\n(1×2×392×518)&quot;]
+    AGG --&gt; POSE[&quot;pose_enc\n(1×2×9)&quot;]
+</pre></div>
+</div>
+<section id="encoder-vggt-image-encoder-2x-engine">
+<h3>Encoder: <code class="docutils literal notranslate"><span class="pre">vggt_image_encoder_2x.engine</span></code><a class="headerlink" href="#encoder-vggt-image-encoder-2x-engine" title="Link to this heading">#</a></h3>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>I/O</p></th>
+<th class="head"><p>Name</p></th>
+<th class="head"><p>Shape</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Input</p></td>
+<td><p>image</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">1</span> <span class="pre">×</span> <span class="pre">3</span> <span class="pre">×</span> <span class="pre">392</span> <span class="pre">×</span> <span class="pre">518</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Output</p></td>
+<td><p>patch_tokens</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">1</span> <span class="pre">×</span> <span class="pre">1036</span> <span class="pre">×</span> <span class="pre">1024</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="decoder-aggregator-vggt-aggregator-2x-engine">
+<h3>Decoder (Aggregator): <code class="docutils literal notranslate"><span class="pre">vggt_aggregator_2x.engine</span></code><a class="headerlink" href="#decoder-aggregator-vggt-aggregator-2x-engine" title="Link to this heading">#</a></h3>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>I/O</p></th>
+<th class="head"><p>Name</p></th>
+<th class="head"><p>Shape</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Input</p></td>
+<td><p>patch_tokens</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">2</span> <span class="pre">×</span> <span class="pre">1036</span> <span class="pre">×</span> <span class="pre">1024</span></code></p></td>
+<td><p>Features from 2 robots</p></td>
+</tr>
+<tr class="row-odd"><td><p>Output</p></td>
+<td><p>pose_enc</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">1</span> <span class="pre">×</span> <span class="pre">2</span> <span class="pre">×</span> <span class="pre">9</span></code></p></td>
+<td><p>Camera pose encoding</p></td>
+</tr>
+<tr class="row-even"><td><p>Output</p></td>
+<td><p>depth</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">1</span> <span class="pre">×</span> <span class="pre">2</span> <span class="pre">×</span> <span class="pre">392</span> <span class="pre">×</span> <span class="pre">518</span> <span class="pre">×</span> <span class="pre">1</span></code></p></td>
+<td><p>Per-robot depth maps</p></td>
+</tr>
+<tr class="row-odd"><td><p>Output</p></td>
+<td><p>depth_conf</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">1</span> <span class="pre">×</span> <span class="pre">2</span> <span class="pre">×</span> <span class="pre">392</span> <span class="pre">×</span> <span class="pre">518</span></code></p></td>
+<td><p>Depth confidence</p></td>
+</tr>
+<tr class="row-even"><td><p>Output</p></td>
+<td><p>world_points</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">1</span> <span class="pre">×</span> <span class="pre">2</span> <span class="pre">×</span> <span class="pre">392</span> <span class="pre">×</span> <span class="pre">518</span> <span class="pre">×</span> <span class="pre">3</span></code></p></td>
+<td><p>3D world points</p></td>
+</tr>
+<tr class="row-odd"><td><p>Output</p></td>
+<td><p>world_points_conf</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">1</span> <span class="pre">×</span> <span class="pre">2</span> <span class="pre">×</span> <span class="pre">392</span> <span class="pre">×</span> <span class="pre">518</span></code></p></td>
+<td><p>Point confidence</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+</section>
+<section id="image-preprocessing">
+<h2>Image Preprocessing<a class="headerlink" href="#image-preprocessing" title="Link to this heading">#</a></h2>
+<p>Before encoding, images are:</p>
+<ol class="arabic simple">
+<li><p><strong>Resized</strong> to <code class="docutils literal notranslate"><span class="pre">392</span> <span class="pre">×</span> <span class="pre">518</span></code> (height × width)</p></li>
+<li><p><strong>Normalized</strong> to <code class="docutils literal notranslate"><span class="pre">[-1,</span> <span class="pre">1]</span></code> range</p></li>
+<li><p><strong>Transposed</strong> from HWC → CHW format for the neural network</p></li>
+</ol>
+</section>
+<section id="configuration">
+<h2>Configuration<a class="headerlink" href="#configuration" title="Link to this heading">#</a></h2>
+<p>Parameters are set in <code class="docutils literal notranslate"><span class="pre">config/vggt_config.yaml</span></code>:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">vggt</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">encoder</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">cycle_interval</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3.0</span><span class="w">          </span><span class="c1"># seconds between encode calls</span>
+<span class="w">    </span><span class="nt">image_width</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">518</span>
+<span class="w">    </span><span class="nt">image_height</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">392</span>
+<span class="w">    </span><span class="nt">model_path</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;...&quot;</span>
+<span class="w">  </span><span class="nt">decoder</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">cycle_interval</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3.0</span><span class="w">          </span><span class="c1"># seconds between decode calls</span>
+<span class="w">    </span><span class="nt">feature_age_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10.0</span><span class="w">  </span><span class="c1"># max age before falling back to self-features</span>
+<span class="w">    </span><span class="nt">num_robots</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
+<span class="w">    </span><span class="nt">model_path</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;...&quot;</span>
+<span class="w">  </span><span class="nt">robot_names</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;khonsu&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;anubis&quot;</span><span class="p p-Indicator">]</span>
+</pre></div>
+</div>
+</section>
+<section id="launch">
+<h2>Launch<a class="headerlink" href="#launch" title="Link to this heading">#</a></h2>
+<section id="monolithic-node-encoder-decoder-in-one-process">
+<h3>Monolithic Node (encoder + decoder in one process)<a class="headerlink" href="#monolithic-node-encoder-decoder-in-one-process" title="Link to this heading">#</a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ros2<span class="w"> </span>launch<span class="w"> </span>neuromesh_platform_r2<span class="w"> </span>vggt_model_neuromesh_launch.py<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>name:<span class="o">=</span>khonsu<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>agent_num:<span class="o">=</span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>agent_list:<span class="o">=</span><span class="s2">&quot;khonsu,anubis&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>color_raw_topic:<span class="o">=</span>/khonsu/sensors/camera_0/camera/color/image_raw
+</pre></div>
+</div>
+</section>
+<section id="separated-encoder-decoder-nodes">
+<h3>Separated Encoder + Decoder Nodes<a class="headerlink" href="#separated-encoder-decoder-nodes" title="Link to this heading">#</a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ros2<span class="w"> </span>launch<span class="w"> </span>neuromesh_platform_r2<span class="w"> </span>vggt_separated_launch.py<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>robot_name:<span class="o">=</span>khonsu<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>color_raw_topic:<span class="o">=</span>/khonsu/color_raw
+</pre></div>
+</div>
+</section>
+<section id="via-script">
+<h3>Via Script<a class="headerlink" href="#via-script" title="Link to this heading">#</a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>./scripts/vggt_model_neuromesh_launch.sh<span class="w"> </span>khonsu<span class="w"> </span><span class="m">1</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="published-topics">
+<h2>Published Topics<a class="headerlink" href="#published-topics" title="Link to this heading">#</a></h2>
+<p>Each robot publishes:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Topic</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">/{robot}/features_{robot}</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Feature</span></code></p></td>
+<td><p>Encoded patch tokens (shared with peers)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">/{robot}/depth_robot1</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">sensor_msgs/Image</span></code></p></td>
+<td><p>Depth (self)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">/{robot}/depth_robot2</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">sensor_msgs/Image</span></code></p></td>
+<td><p>Depth (neighbor)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">/{robot}/pointcloud_current</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">sensor_msgs/PointCloud2</span></code></p></td>
+<td><p>3D points (self)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">/{robot}/pointcloud_neighbor</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">sensor_msgs/PointCloud2</span></code></p></td>
+<td><p>3D points (neighbor)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">/{robot}/pointcloud_current_rgb</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">sensor_msgs/PointCloud2</span></code></p></td>
+<td><p>RGB pointcloud (self)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">/{robot}/pointcloud_neighbor_rgb</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">sensor_msgs/PointCloud2</span></code></p></td>
+<td><p>RGB pointcloud (neighbor)</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="default-robot-names">
+<h2>Default Robot Names<a class="headerlink" href="#default-robot-names" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Robot</p></th>
+<th class="head"><p><code class="docutils literal notranslate"><span class="pre">agent_num</span></code></p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>khonsu</p></td>
+<td><p>1</p></td>
+</tr>
+<tr class="row-odd"><td><p>anubis</p></td>
+<td><p>2</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="coordinate-frames">
+<h2>Coordinate Frames<a class="headerlink" href="#coordinate-frames" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Output</p></th>
+<th class="head"><p>Frame</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Depth images</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">cam1_color_optical_frame</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Point clouds</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">{robot_name}/map</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>TF transforms</p></td>
+<td><p>Broadcast automatically</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="notes">
+<h2>Notes<a class="headerlink" href="#notes" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p>Requires exactly <strong>2 robots</strong> for the current <code class="docutils literal notranslate"><span class="pre">vggt_aggregator_2x.engine</span></code> model</p></li>
+<li><p>Point cloud confidence threshold: <strong>0.5</strong> (configurable in source)</p></li>
+<li><p>If a neighbor’s features exceed <code class="docutils literal notranslate"><span class="pre">feature_age_threshold</span></code>, the node falls back
+to using the robot’s own features for the missing slot</p></li>
+</ul>
+</section>
+</section>
+
+
+                </article>
+              
+
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="real_world.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Real-World Deployment</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="../design/vggt_refactoring.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">VGGT Encoder-Decoder Separation Design</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item"><div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> Contents
+  </div>
+  <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#model-architecture">Model Architecture</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#encoder-vggt-image-encoder-2x-engine">Encoder: <code class="docutils literal notranslate"><span class="pre">vggt_image_encoder_2x.engine</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#decoder-aggregator-vggt-aggregator-2x-engine">Decoder (Aggregator): <code class="docutils literal notranslate"><span class="pre">vggt_aggregator_2x.engine</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#image-preprocessing">Image Preprocessing</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#configuration">Configuration</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#launch">Launch</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#monolithic-node-encoder-decoder-in-one-process">Monolithic Node (encoder + decoder in one process)</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#separated-encoder-decoder-nodes">Separated Encoder + Decoder Nodes</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#via-script">Via Script</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#published-topics">Published Topics</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#default-robot-names">Default Robot Names</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#coordinate-frames">Coordinate Frames</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#notes">Notes</a></li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+<div class="bd-footer-content__inner container">
+  
+  <div class="footer-item">
+    
+<p class="component-author">
+By Long Quang
+</p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+
+  <p class="copyright">
+    
+      © Copyright 2026, Long Quang.
+      <br/>
+    
+  </p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+</div>
+          </footer>
+        
+
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+  </footer>
+  </body>
+</html>

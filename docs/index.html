@@ -1,0 +1,520 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="./" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>NeuroMesh Documentation &#8212; NeuroMesh</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/sphinx-book-theme.css?v=3c74b3bc" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="_static/documentation_options.js?v=f9c1cefe"></script>
+    <script src="_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'index';</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script src="_static/mermaid-init.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Getting Started" href="getting_started.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search..."
+         aria-label="Search..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="#">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">NeuroMesh</p>
+  
+</a></div>
+        <div class="sidebar-primary-item">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button></div>
+        <div class="sidebar-primary-item"><nav class="bd-links bd-docs-nav" aria-label="Main">
+    <div class="bd-toc-item navbar-nav active">
+        <p aria-level="2" class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="build.html">Build Instructions</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Architecture</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="architecture.html">System Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="packages/neuromesh_interfaces.html"><code class="docutils literal notranslate"><span class="pre">neuromesh_interfaces</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="packages/engine_interface.html"><code class="docutils literal notranslate"><span class="pre">engine_interface</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="packages/tensorrt_engine.html"><code class="docutils literal notranslate"><span class="pre">tensorrt_engine</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="packages/onnx_engine.html"><code class="docutils literal notranslate"><span class="pre">onnx_engine</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="packages/neuromesh_platform_r2.html"><code class="docutils literal notranslate"><span class="pre">neuromesh_platform_r2</span></code></a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Deployment</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="deployment/real_world.html">Real-World Deployment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deployment/vggt_setup.html">VGGT Setup</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Design Documents</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="design/vggt_refactoring.html">VGGT Encoder-Decoder Separation Design</a></li>
+</ul>
+
+    </div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+
+<div class="sbt-scroll-pixel-helper"></div>
+
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item"><button class="sidebar-toggle primary-toggle btn btn-sm" title="Toggle primary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <span class="fa-solid fa-bars"></span>
+</button></div>
+      
+    </div>
+  
+  
+    <div class="header-article-items__end">
+      
+        <div class="header-article-item">
+
+<div class="article-header-buttons">
+
+
+<a href="https://github.com/arplaboratory/neuromesh" target="_blank"
+   class="btn btn-sm btn-source-repository-button"
+   title="Source repository"
+   data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fab fa-github"></i>
+  </span>
+
+</a>
+
+
+
+
+
+
+<div class="dropdown dropdown-download-buttons">
+  <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Download this page">
+    <i class="fas fa-download"></i>
+  </button>
+  <ul class="dropdown-menu">
+      
+      
+      
+      <li><a href="_sources/index.md" target="_blank"
+   class="btn btn-sm btn-download-source-button dropdown-item"
+   title="Download source file"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file"></i>
+  </span>
+<span class="btn__text-container">.md</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li>
+<button onclick="window.print()"
+  class="btn btn-sm btn-download-pdf-button dropdown-item"
+  title="Print to PDF"
+  data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file-pdf"></i>
+  </span>
+<span class="btn__text-container">.pdf</span>
+</button>
+</li>
+      
+  </ul>
+</div>
+
+
+
+
+<button onclick="toggleFullScreen()"
+  class="btn btn-sm btn-fullscreen-button pst-navbar-icon"
+  title="Fullscreen mode"
+  data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-expand"></i>
+  </span>
+
+</button>
+
+
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button>
+
+
+<button class="btn btn-sm pst-navbar-icon search-button search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass fa-lg"></i>
+</button>
+
+</div></div>
+      
+    </div>
+  
+</div>
+</div>
+              
+              
+
+<div id="jb-print-docs-body" class="onlyprint">
+    <h1>NeuroMesh Documentation</h1>
+    <!-- Table of contents -->
+    <div id="print-main-content">
+        <div id="jb-print-toc">
+            
+        </div>
+    </div>
+</div>
+
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="neuromesh-documentation">
+<h1>NeuroMesh Documentation<a class="headerlink" href="#neuromesh-documentation" title="Link to this heading">#</a></h1>
+<p>NeuroMesh is a general, modular, and
+decentralized framework for deploying multi-robot collaborative learning
+algorithms in real-world settings.</p>
+<div class="toctree-wrapper compound">
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting Started</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="getting_started.html#key-features">Key Features</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting_started.html#prerequisites">Prerequisites</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting_started.html#environment-setup">Environment Setup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting_started.html#build">Build</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting_started.html#quick-launch-vggt">Quick Launch: VGGT</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting_started.html#quick-launch-dust3r">Quick Launch: DUSt3R</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting_started.html#quick-launch-gat">Quick Launch: GAT</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="build.html">Build Instructions</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="build.html#dependencies">Dependencies</a></li>
+<li class="toctree-l2"><a class="reference internal" href="build.html#onnx-runtime-required-before-colcon-build">ONNX Runtime (required before <code class="docutils literal notranslate"><span class="pre">colcon</span> <span class="pre">build</span></code>)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="build.html#colcon-build">Colcon Build</a></li>
+<li class="toctree-l2"><a class="reference internal" href="build.html#troubleshooting">Troubleshooting</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Architecture</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="architecture.html">System Architecture</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="architecture.html#package-overview">Package Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="architecture.html#layer-descriptions">Layer Descriptions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="architecture.html#data-flow-vggt-perception">Data Flow: VGGT Perception</a></li>
+<li class="toctree-l2"><a class="reference internal" href="architecture.html#multi-robot-communication">Multi-Robot Communication</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="packages/neuromesh_interfaces.html"><code class="docutils literal notranslate"><span class="pre">neuromesh_interfaces</span></code></a><ul>
+<li class="toctree-l2"><a class="reference internal" href="packages/neuromesh_interfaces.html#messages">Messages</a></li>
+<li class="toctree-l2"><a class="reference internal" href="packages/neuromesh_interfaces.html#services">Services</a></li>
+<li class="toctree-l2"><a class="reference internal" href="packages/neuromesh_interfaces.html#build">Build</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="packages/engine_interface.html"><code class="docutils literal notranslate"><span class="pre">engine_interface</span></code></a><ul>
+<li class="toctree-l2"><a class="reference internal" href="packages/engine_interface.html#baseengine"><code class="docutils literal notranslate"><span class="pre">BaseEngine</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="packages/engine_interface.html#engineinterfacenode"><code class="docutils literal notranslate"><span class="pre">EngineInterfaceNode</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="packages/engine_interface.html#writing-a-new-backend-plugin">Writing a New Backend Plugin</a></li>
+<li class="toctree-l2"><a class="reference internal" href="packages/engine_interface.html#tests">Tests</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="packages/tensorrt_engine.html"><code class="docutils literal notranslate"><span class="pre">tensorrt_engine</span></code></a><ul>
+<li class="toctree-l2"><a class="reference internal" href="packages/tensorrt_engine.html#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="packages/tensorrt_engine.html#model-files">Model Files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="packages/tensorrt_engine.html#converting-onnx-tensorrt">Converting ONNX → TensorRT</a></li>
+<li class="toctree-l2"><a class="reference internal" href="packages/tensorrt_engine.html#plugin-registration">Plugin Registration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="packages/tensorrt_engine.html#requirements">Requirements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="packages/tensorrt_engine.html#tests">Tests</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="packages/onnx_engine.html"><code class="docutils literal notranslate"><span class="pre">onnx_engine</span></code></a><ul>
+<li class="toctree-l2"><a class="reference internal" href="packages/onnx_engine.html#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="packages/onnx_engine.html#usage">Usage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="packages/onnx_engine.html#plugin-registration">Plugin Registration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="packages/onnx_engine.html#requirements">Requirements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="packages/onnx_engine.html#tests">Tests</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="packages/neuromesh_platform_r2.html"><code class="docutils literal notranslate"><span class="pre">neuromesh_platform_r2</span></code></a><ul>
+<li class="toctree-l2"><a class="reference internal" href="packages/neuromesh_platform_r2.html#node-reference">Node Reference</a></li>
+<li class="toctree-l2"><a class="reference internal" href="packages/neuromesh_platform_r2.html#launch-files">Launch Files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="packages/neuromesh_platform_r2.html#configuration-files">Configuration Files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="packages/neuromesh_platform_r2.html#build">Build</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Deployment</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="deployment/real_world.html">Real-World Deployment</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="deployment/real_world.html#requirements">Requirements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deployment/real_world.html#setup-steps-per-robot">Setup Steps (Per Robot)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deployment/real_world.html#perception-using-dust3r">Perception using DUSt3R</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deployment/real_world.html#collaborative-goal-assignment-using-gat">Collaborative Goal Assignment using GAT</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="deployment/vggt_setup.html">VGGT Setup</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="deployment/vggt_setup.html#model-architecture">Model Architecture</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deployment/vggt_setup.html#image-preprocessing">Image Preprocessing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deployment/vggt_setup.html#configuration">Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deployment/vggt_setup.html#launch">Launch</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deployment/vggt_setup.html#published-topics">Published Topics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deployment/vggt_setup.html#default-robot-names">Default Robot Names</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deployment/vggt_setup.html#coordinate-frames">Coordinate Frames</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deployment/vggt_setup.html#notes">Notes</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Design Documents</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="design/vggt_refactoring.html">VGGT Encoder-Decoder Separation Design</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="design/vggt_refactoring.html#executive-summary">Executive Summary</a></li>
+<li class="toctree-l2"><a class="reference internal" href="design/vggt_refactoring.html#current-vs-proposed-architecture">Current vs. Proposed Architecture</a></li>
+<li class="toctree-l2"><a class="reference internal" href="design/vggt_refactoring.html#node-design">Node Design</a></li>
+<li class="toctree-l2"><a class="reference internal" href="design/vggt_refactoring.html#feature-aggregation-strategy">Feature Aggregation Strategy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="design/vggt_refactoring.html#configuration">Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="design/vggt_refactoring.html#implementation-roadmap">Implementation Roadmap</a></li>
+<li class="toctree-l2"><a class="reference internal" href="design/vggt_refactoring.html#migration-strategy">Migration Strategy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="design/vggt_refactoring.html#benefits">Benefits</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+
+
+                </article>
+              
+
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="right-next"
+       href="getting_started.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Getting Started</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+<div class="bd-footer-content__inner container">
+  
+  <div class="footer-item">
+    
+<p class="component-author">
+By Long Quang
+</p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+
+  <p class="copyright">
+    
+      © Copyright 2026, Long Quang.
+      <br/>
+    
+  </p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+</div>
+          </footer>
+        
+
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+  </footer>
+  </body>
+</html>
