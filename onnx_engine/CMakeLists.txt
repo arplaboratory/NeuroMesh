@@ -75,8 +75,8 @@ install(TARGETS
   RUNTIME DESTINATION bin
 )
 
-install(DIRECTORY launch
-  DESTINATION share/${PROJECT_NAME})
+#install(DIRECTORY launch
+#  DESTINATION share/${PROJECT_NAME})
 install(DIRECTORY models
   DESTINATION share/${PROJECT_NAME})
 
