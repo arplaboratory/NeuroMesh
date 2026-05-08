@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from datetime import datetime
 
+from pygments.lexers.special import TextLexer
+from sphinx.highlighting import lexers
+
 project = "NeuroMesh"
 author = "ARPL"
 project_copyright = f"{datetime.now():%Y}, {author}"
@@ -49,3 +52,5 @@ suppress_warnings = [
     "ref.ref",
     "misc.highlighting_failure",
 ]
+
+lexers["mermaid"] = TextLexer()
