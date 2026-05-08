@@ -10,36 +10,43 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
+set (dependencies
+ "std_msgs"
+ "rclcpp"
+ "ament_index_cpp"
+ "sensor_msgs"
+ "neuromesh_interfaces"
+ "rclcpp_components"
+ "yaml-cpp"
+ "tf2_ros"
+ "geometry_msgs"
+ "cv_bridge"
+ "OpenCV"
+ "Eigen3"
+ "nav_msgs"
+ "Eigen3"
+ "tf2_geometry_msgs"
+ "tf2_sensor_msgs"
+ "visualization_msgs"
+ "interactive_markers"
+ "rviz_rendering"
+ "rviz_common"
+ "std_srvs"
+ "pcl_conversions"
+ "tf2"
+"message_filters"
+ )
+
+
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
-find_package(std_msgs REQUIRED)
-find_package(geometry_msgs REQUIRED)
-find_package(nav_msgs REQUIRED)
-find_package(rclcpp REQUIRED)
-find_package(sensor_msgs REQUIRED)
-find_package(neuromesh_interfaces REQUIRED)
 find_package(ZLIB)
 find_package(OpenCV 4 REQUIRED)
-find_package(cv_bridge REQUIRED)
-find_package(rclcpp_components REQUIRED)
-find_package(yaml-cpp REQUIRED)
-find_package(tf2 REQUIRED)
-find_package(tf2_ros REQUIRED)
-find_package(tf2_sensor_msgs REQUIRED)
-find_package(Eigen3 REQUIRED)
-find_package(tf2_geometry_msgs REQUIRED)
-find_package(geometry_msgs REQUIRED)
-find_package(visualization_msgs REQUIRED)
-find_package(interactive_markers REQUIRED)
-find_package(rviz_rendering REQUIRED)
-find_package(rviz_common REQUIRED)
-find_package(std_srvs REQUIRED)
-find_package(rclcpp_components REQUIRED)
 find_package(PCL REQUIRED)
-find_package(pcl_conversions REQUIRED)
-find_package(message_filters REQUIRED)
-find_package(realsense2_camera_msgs REQUIRED)
+foreach(dep ${dependencies})
+  find_package(${dep} REQUIRED)
+endforeach()
 
 include_directories(include)
 include_directories(
@@ -57,30 +64,6 @@ add_executable(compression_node
   src/compression_node.cpp
 )
 
-set (dependencies
- "std_msgs"
- "rclcpp"
- "sensor_msgs"
- "neuromesh_interfaces"
- "rclcpp_components"
- "yaml-cpp"
- "tf2_ros"
- "geometry_msgs"
- "cv_bridge"
- "OpenCV"
- "Eigen3"
- "nav_msgs"
- "Eigen3"
- "tf2_geometry_msgs"
- "visualization_msgs"
- "interactive_markers"
- "rviz_rendering"
- "rviz_common"
- "std_srvs"
- "pcl_conversions"
- "tf2"
- )
-
 # Modified Codes
 add_library(dust3r_example SHARED
  src/dust3r_toy_implementation_batch.cpp
@@ -96,22 +79,6 @@ ament_target_dependencies(dust3r_example
 
 target_link_libraries(dust3r_example ${YAML_CPP_LIBRARIES})
 rclcpp_components_register_nodes(dust3r_example "neuromeshNode::ToyImplementation")
-
-# VGGT Codes
-add_library(vggt_example SHARED
- src/vggt_toy_implementation.cpp
- src/vggt_neuromesh_node.cpp)
-
-set_target_properties(vggt_example PROPERTIES
- COMPILE_DEFINITIONS "COMPOSITION_BUILDING_DLL"
-)
-
- ament_target_dependencies(vggt_example
- ${dependencies}
- )
-
-target_link_libraries(vggt_example ${YAML_CPP_LIBRARIES})
-rclcpp_components_register_nodes(vggt_example "vggtNode::VggtToyImplementation")
 
 # VGGT Separated Nodes
 add_library(vggt_separated SHARED
@@ -148,6 +115,23 @@ target_link_libraries(control_implementation ${YAML_CPP_LIBRARIES})
 
 rclcpp_components_register_nodes(control_implementation "ControlneuromeshNode::ControlImplementation")
 
+# GAT Codes
+add_library(gat_example SHARED
+ src/gat_model_implementation.cpp
+ src/gat_model_neuromesh_node.cpp
+ src/gat_planner_model_implementation.cpp
+ src/gat_planner_model_neuromesh_node.cpp)
+set_target_properties(gat_example PROPERTIES
+ COMPILE_DEFINITIONS "COMPOSITION_BUILDING_DLL"
+)
+ament_target_dependencies(gat_example
+ ${dependencies}
+ )
+target_link_libraries(gat_example ${YAML_CPP_LIBRARIES})
+rclcpp_components_register_nodes(gat_example 
+  "GATneuromeshNode::GATImplementation"
+  "GATPlannerNeuromeshNode::GATPlannerImplementation")
+
 # odom_republisher
 add_library(odom_republisher SHARED
   src/odom_republisher.cpp)
@@ -164,6 +148,24 @@ ament_target_dependencies(odom_republisher
 )
 
 rclcpp_components_register_nodes(odom_republisher "odom_republisher::OdomRepublisher")
+
+add_library(starting_poses_sender SHARED
+  src/starting_poses_sender.cpp)
+set_target_properties(starting_poses_sender PROPERTIES
+  COMPILE_DEFINITIONS "COMPOSITION_BUILDING_DLL"
+)
+ament_target_dependencies(starting_poses_sender
+  "ament_index_cpp"
+  "geometry_msgs"
+  "nav_msgs"
+  "rclcpp"
+  "rclcpp_components"
+  "std_msgs"
+  "tf2"
+  "tf2_ros"
+  "yaml-cpp"
+)
+rclcpp_components_register_nodes(starting_poses_sender "goal_sender::GoalSenderNode")
 
 # Add include folder
 target_include_directories(visualization_node PUBLIC "include/")
@@ -211,7 +213,7 @@ ament_target_dependencies(depth_completion_node
   "PCL"
   "pcl_conversions"
   "message_filters"
-  "realsense2_camera_msgs"
+  # "realsense2_camera_msgs"
 )
 
 target_link_libraries(depth_completion_node
@@ -234,7 +236,8 @@ endif()
 install(TARGETS
   odom_republisher
   dust3r_example
-  vggt_example
+  gat_example
+  starting_poses_sender
   vggt_separated
   #control_implementation
   ARCHIVE DESTINATION lib
@@ -253,7 +256,8 @@ install(FILES
   launch/full_except_bridge.py
   launch/dust3r_model_neuromesh_launch.py
   launch/vggt_model_neuromesh_launch.py
-  launch/vggt_separated_launch.py
+  launch/gat_model_neuromesh_launch.py
+  launch/gat_planner_model_neuromesh_launch.py
   launch/depth_completion_launch.py
   DESTINATION share/${PROJECT_NAME}/launch
 )
@@ -264,9 +268,12 @@ install(DIRECTORY config
 install(PROGRAMS 
     scripts/dust3r_model_neuromesh_launch.sh
     scripts/vggt_model_neuromesh_launch.sh
-    scripts/vggt_separated_launch.sh
     DESTINATION share/${PROJECT_NAME})
 
+install(DIRECTORY include/
+  DESTINATION include)
+
 ament_export_dependencies(rosidl_default_runtime)
-ament_export_libraries(vggt_separated dust3r_example vggt_example odom_republisher)
+ament_export_include_directories(include)
+ament_export_libraries(vggt_separated dust3r_example odom_republisher starting_poses_sender)
 ament_package()

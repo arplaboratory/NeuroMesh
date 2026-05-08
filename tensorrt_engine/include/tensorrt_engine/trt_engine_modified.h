@@ -1,35 +1,32 @@
-#ifndef TRT_ENGINE_H
-#define TRT_ENGINE_H
+#pragma once
 
+#include "engine_interface/inference_engine_base.hpp"
 #include <vector>
 #include <string>
 #include <memory>
 
-#include <NvInfer.h>
-#include <NvOnnxParser.h>
-
-#include <cuda_runtime.h>
-
 #include <tensorrt_engine/logger.h>
 
-class TRTEngine {
-public:
+namespace engine_interface {
 
-    TRTEngine(std::string model_filename, std::vector<std::vector<uint>> input_dims, int type_length, int batchSize=1);
-    ~TRTEngine();
+class TRTEngine : public BaseEngine 
+{
+    public:
+        TRTEngine();
+        ~TRTEngine() override;
 
-    void runInference(const std::vector<const void*>& inputTensors, const std::vector<int>& inputSizes,
-                      std::vector<void*>& outputTensors, const std::vector<int>& outputSizes);
+        bool loadModel(const std::string& model_path, 
+            const std::vector<std::vector<uint32_t>>& input_dims, 
+            int type_length) override;
 
-protected:
-    Logger logger;
-    std::unique_ptr<nvinfer1::ICudaEngine> engine;
-    std::unique_ptr<nvinfer1::IRuntime> runtime;
+        void runInference(const std::vector<const void*>& inputTensors, 
+                          const std::vector<int>& inputSizes,
+                          std::vector<void*>& outputTensors, 
+                          const std::vector<int>& outputSizes) override;
 
-    std::unique_ptr<nvinfer1::IExecutionContext> context;
-    std::vector<void*> bindings;
-
+    private:
+        class Impl;
+        std::unique_ptr<Impl> impl_;
 };
 
-
-#endif
+} // namespace engine_interface
