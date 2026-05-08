@@ -17,6 +17,7 @@ def launch_setup(context):
     goal_file = LaunchConfiguration("goal_file").perform(context)
     start_file = LaunchConfiguration("start_file").perform(context)
     start_position = LaunchConfiguration("start_position")
+    use_mission_maestro_bridge = LaunchConfiguration("use_mission_maestro_bridge")
     odom_republisher = LaunchConfiguration("odom_republisher")
     publish_static_map = LaunchConfiguration("publish_static_map").perform(context)
     planning_frame = LaunchConfiguration("planning_frame")
@@ -74,6 +75,26 @@ def launch_setup(context):
         condition=IfCondition(publish_static_map),
     )
     launch_list.append(tf2_static_pub)
+
+    launch_list.append(
+        Node(
+            package="mission_maestro_bridge",
+            executable="mission_maestro_bridge",
+            namespace=name,
+            name="mission_maestro_bridge",
+            parameters=[
+                {
+                    "mission_goal_topic": "mission_goals",
+                    "mission_yaml_topic": "mission_yaml",
+                    "mission_command_topic": "mission_command",
+                    "mission_yaml_service": "maestro_yaml",
+                    "mission_command_service": "maestro_command",
+                }
+            ],
+            condition=IfCondition(use_mission_maestro_bridge),
+            output="screen",
+        )
+    )
 
     # LaunchConfiguration('agent_list') was serialized into string
     if isinstance(agent_list, str):
@@ -316,6 +337,14 @@ def generate_launch_description():
         default_value="False",
         description=("Whether or not to run start goals node"),
     )
+    use_mission_maestro_bridge_arg = DeclareLaunchArgument(
+        name="use_mission_maestro_bridge",
+        default_value="False",
+        description=(
+            "Whether or not to run optional bridge from generic mission topics "
+            "to arl_mission_maestro services"
+        ),
+    )
     odom_republisher_arg = DeclareLaunchArgument(
         name="odom_republisher",
         default_value="False",
@@ -348,6 +377,7 @@ def generate_launch_description():
             goal_file_arg,
             start_file_arg,
             start_position_arg,
+            use_mission_maestro_bridge_arg,
             publish_static_map_arg,
             odom_republisher_arg,
             planning_frame_arg,
