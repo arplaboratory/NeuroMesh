@@ -13,6 +13,7 @@ endif()
 set (dependencies
  "std_msgs"
  "rclcpp"
+ "ament_index_cpp"
  "sensor_msgs"
  "neuromesh_interfaces"
  "rclcpp_components"
@@ -31,11 +32,8 @@ set (dependencies
  "rviz_rendering"
  "rviz_common"
  "std_srvs"
-#  "arl_mission_maestro"
-#  "phx_nav_msgs"
  "pcl_conversions"
  "tf2"
-# "realsense2_camera_msgs"
 "message_filters"
  )
 
@@ -151,22 +149,23 @@ ament_target_dependencies(odom_republisher
 
 rclcpp_components_register_nodes(odom_republisher "odom_republisher::OdomRepublisher")
 
-# starting poses sender node TODO: need to be moved
-# add_library(starting_poses_sender SHARED
-#   src/starting_poses_sender.cpp)
-# set_target_properties(starting_poses_sender PROPERTIES
-#   COMPILE_DEFINITIONS "COMPOSITION_BUILDING_DLL"
-# )
-# Link dependencies
-# ament_target_dependencies(starting_poses_sender
-#   "rclcpp"
-#   "geometry_msgs"
-#   "rclcpp_components"
-#   "yaml-cpp"
-#   # "arl_mission_maestro"
-#   # "phx_nav_msgs"
-# )
-# rclcpp_components_register_nodes(starting_poses_sender "starting_poses_sender::StartingPosesSender")
+add_library(starting_poses_sender SHARED
+  src/starting_poses_sender.cpp)
+set_target_properties(starting_poses_sender PROPERTIES
+  COMPILE_DEFINITIONS "COMPOSITION_BUILDING_DLL"
+)
+ament_target_dependencies(starting_poses_sender
+  "ament_index_cpp"
+  "geometry_msgs"
+  "nav_msgs"
+  "rclcpp"
+  "rclcpp_components"
+  "std_msgs"
+  "tf2"
+  "tf2_ros"
+  "yaml-cpp"
+)
+rclcpp_components_register_nodes(starting_poses_sender "goal_sender::GoalSenderNode")
 
 # Add include folder
 target_include_directories(visualization_node PUBLIC "include/")
@@ -238,6 +237,7 @@ install(TARGETS
   odom_republisher
   dust3r_example
   gat_example
+  starting_poses_sender
   vggt_separated
   #control_implementation
   ARCHIVE DESTINATION lib
@@ -270,6 +270,10 @@ install(PROGRAMS
     scripts/vggt_model_neuromesh_launch.sh
     DESTINATION share/${PROJECT_NAME})
 
+install(DIRECTORY include/
+  DESTINATION include)
+
 ament_export_dependencies(rosidl_default_runtime)
-ament_export_libraries(vggt_separated dust3r_example odom_republisher)
+ament_export_include_directories(include)
+ament_export_libraries(vggt_separated dust3r_example odom_republisher starting_poses_sender)
 ament_package()

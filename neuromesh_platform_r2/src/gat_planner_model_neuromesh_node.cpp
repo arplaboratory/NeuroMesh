@@ -25,7 +25,7 @@ GATPlannerNeuromeshNode :: GATPlannerNeuromeshNode(const rclcpp::NodeOptions &op
 	this->declare_parameter<bool>("ints_to_floats", true);
     this->declare_parameter<std::string>("goal_poses_yaml_file", "goal_poses.yaml");
     this->declare_parameter<double>("goals_sending_delay", 10.0);
-    this->declare_parameter<std::string>("service_adapter_type", "MavManager");
+    this->declare_parameter<std::string>("service_adapter_type", "topic");
 
 	// Get node parameters
 	this->get_parameter("encoder_model_name", encoder_model_name_);
@@ -671,9 +671,12 @@ void GATPlannerNeuromeshNode::prepare_second_stage_decoding() {
                     size_t size = second_decoder_result_tensor->data.size();
                     std::memcpy(&max_prob, &second_decoder_result_tensor->data[0], sizeof(float));
 
-                    goal_adapter_ = AdapterFactory::create(service_adapter_type_, this->shared_from_this());
+                    if (!goal_adapter_) {
+                        goal_adapter_ = AdapterFactory::create(service_adapter_type_, this->shared_from_this());
+                    }
                     if (!goal_adapter_) {
                         RCLCPP_ERROR(this->get_logger(), "Failed to create service adapter of type '%s'", service_adapter_type_.c_str());
+                        return;
                     }
 
                     NavigationGoal goal;

@@ -1,14 +1,17 @@
-#include <rclcpp/rclcpp.hpp>
-#include <yaml-cpp/yaml.h>
-#include <arl_mission_maestro/srv/maestro_mission_yaml.hpp>
-#include <arl_mission_maestro/srv/maestro_command.hpp>
-#include <geometry_msgs/msg/pose.hpp>
 #include <ament_index_cpp/get_package_share_directory.hpp>
-#include <vector>
-#include <string>
+#include <geometry_msgs/msg/pose.hpp>
+#include <geometry_msgs/msg/pose_array.hpp>
 #include <nav_msgs/msg/odometry.hpp>
+#include <rclcpp/rclcpp.hpp>
+#include <std_msgs/msg/string.hpp>
+#include <std_msgs/msg/u_int8.hpp>
 #include <tf2_ros/buffer.h>
 #include <tf2_ros/transform_listener.h>
+#include <yaml-cpp/yaml.h>
+
+#include <fstream>
+#include <string>
+#include <vector>
 
 namespace goal_sender
 {
@@ -18,50 +21,82 @@ public:
   explicit GoalSenderNode(const rclcpp::NodeOptions & options)
   : Node("goal_sender_node", options)
   {
-    // Declare parameters
     this->declare_parameter("start_poses_yaml_file", "start_poses.yaml");
-    this->declare_parameter("id", "id");
+    this->declare_parameter("id", "");
+    this->declare_parameter("robot_id", "");
     this->declare_parameter("initialization_timeout", 10.0);
-    
-    // Get parameters
-    id_ = this->get_parameter("id").as_string();
-    
-    std::string start_poses_yaml_file = this->get_parameter("start_poses_yaml_file").as_string();
+    this->declare_parameter("mission_goal_topic", "mission_goals");
+    this->declare_parameter("mission_yaml_topic", "mission_yaml");
+    this->declare_parameter("mission_command_topic", "mission_command");
+    this->declare_parameter("publish_mission_yaml", true);
+    this->declare_parameter("start_command_value", 0);
 
-    // Setup TF listener
+    std::string robot_id = this->get_parameter("robot_id").as_string();
+    std::string id = this->get_parameter("id").as_string();
+    id_ = !robot_id.empty() ? robot_id : id;
+    if (id_.empty()) {
+      id_ = this->get_namespace();
+      if (!id_.empty() && id_[0] == '/') {
+        id_.erase(0, 1);
+      }
+    }
+
+    std::string start_poses_yaml_file = this->get_parameter("start_poses_yaml_file").as_string();
+    yaml_file_path_ = resolveYamlPath(start_poses_yaml_file);
+    publish_mission_yaml_ = this->get_parameter("publish_mission_yaml").as_bool();
+    start_command_value_ = this->get_parameter("start_command_value").as_int();
+
+    std::string mission_goal_topic = this->get_parameter("mission_goal_topic").as_string();
+    std::string mission_yaml_topic = this->get_parameter("mission_yaml_topic").as_string();
+    std::string mission_command_topic = this->get_parameter("mission_command_topic").as_string();
+
+    goal_pub_ = this->create_publisher<geometry_msgs::msg::PoseArray>(mission_goal_topic, 10);
+    command_pub_ = this->create_publisher<std_msgs::msg::UInt8>(mission_command_topic, 10);
+    if (publish_mission_yaml_) {
+      yaml_pub_ = this->create_publisher<std_msgs::msg::String>(mission_yaml_topic, 10);
+    }
+
     tf_buffer_ = std::make_unique<tf2_ros::Buffer>(this->get_clock());
     tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
 
-     // Create odometry subscriber
-     std::string odom_topic = "/" + id_ + "/odom";
-     odom_sub_ = this->create_subscription<nav_msgs::msg::Odometry>(
-       odom_topic, 
-       10, 
-       std::bind(&GoalSenderNode::odom_callback, this, std::placeholders::_1)
-     );
-    
-    // Create service clients
-    waypoint_yaml_request_ = this->create_client<arl_mission_maestro::srv::MaestroMissionYaml>(
-      "maestro_yaml");
-    waypoint_command_request_ = this->create_client<arl_mission_maestro::srv::MaestroCommand>(
-      "maestro_command");
+    std::string odom_topic = "/" + id_ + "/odom";
+    odom_sub_ = this->create_subscription<nav_msgs::msg::Odometry>(
+      odom_topic,
+      10,
+      std::bind(&GoalSenderNode::odom_callback, this, std::placeholders::_1));
 
     // Set initialization timeout
     double timeout = this->get_parameter("initialization_timeout").as_double();
     init_timeout_ = this->now() + rclcpp::Duration::from_seconds(timeout);
       
-    // Create timer for periodic checking of service availability
     timer_ = this->create_wall_timer(
       std::chrono::seconds(1),
       std::bind(&GoalSenderNode::timerCallback, this));
-      
-    // Load goals from YAML file
+
     loadGoalsFromYaml();
 
     RCLCPP_INFO(this->get_logger(), "Waiting for robot %s initialization...", id_.c_str());
   }
 
 private:
+  std::string resolveYamlPath(const std::string & yaml_file) const
+  {
+    std::ifstream direct_file(yaml_file);
+    if (direct_file.good()) {
+      return yaml_file;
+    }
+
+    const std::string package_share =
+      ament_index_cpp::get_package_share_directory("neuromesh_platform_r2");
+    const std::string config_candidate = package_share + "/config/" + yaml_file;
+    std::ifstream config_file(config_candidate);
+    if (config_file.good()) {
+      return config_candidate;
+    }
+
+    return yaml_file;
+  }
+
   void odom_callback(const nav_msgs::msg::Odometry::SharedPtr msg)
   {
     if (!odom_received_) {
@@ -73,7 +108,6 @@ private:
   bool check_transform_available()
   {
     try {
-      // Check transform from odom to map
       geometry_msgs::msg::TransformStamped transform = 
         tf_buffer_->lookupTransform("map", id_ + "/odom", tf2::TimePointZero);
       
@@ -93,8 +127,7 @@ private:
   {
     try {
       YAML::Node config = YAML::LoadFile(yaml_file_path_);
-      
-      // Check if the id exists in the YAML file
+
       if (!config[id_]) {
         RCLCPP_ERROR(
           this->get_logger(),
@@ -102,9 +135,8 @@ private:
         return;
       }
 
-      // Get goals specific to this robot
       const YAML::Node& robot_goals = config[id_]["goals"];
-      
+
       if (!robot_goals || !robot_goals.IsSequence()) {
         RCLCPP_ERROR(
           this->get_logger(),
@@ -115,7 +147,6 @@ private:
       for (const auto& goal : robot_goals) {
         geometry_msgs::msg::Pose pose;
         
-        // Check if position node exists and has required fields
         if (goal["position"] && 
             goal["position"]["x"] && 
             goal["position"]["y"]) {
@@ -147,15 +178,12 @@ private:
     yaml_string["version"] = 2.0;
     yaml_string["frameid"] = id_ + "/map";
     
-    // Create a waypoints sequence node
     yaml_string["waypoints"] = YAML::Node(YAML::NodeType::Sequence);
-    
-    // Add each goal pose as a waypoint
+
     for (size_t i = 0; i < goal_poses_.size(); ++i) {
       YAML::Node wp_node;
       const auto& pose = goal_poses_[i];
-      
-      // Create pose data vector
+
       std::vector<float> pose_data{
         static_cast<float>(pose.position.x),
         static_cast<float>(pose.position.y),
@@ -167,10 +195,9 @@ private:
       wp_node["pose"].SetStyle(YAML::EmitterStyle::Flow);
       wp_node["radius"] = 2.0;
       
-      // Add waypoint to the sequence
       yaml_string["waypoints"].push_back(wp_node);
     }
-    
+
     return yaml_string;
   }
 
@@ -179,56 +206,49 @@ private:
     if (goals_sent_ || goal_poses_.empty()) {
       return;
     }
-    // Prepare the goal pose format from yaml file
+
     YAML::Node mission_yaml = createMissionYaml();
 
-    // Prepare YAML service request
-    auto waypoint_yaml = std::make_shared<arl_mission_maestro::srv::MaestroMissionYaml::Request>();
-    auto waypoint_command = std::make_shared<arl_mission_maestro::srv::MaestroCommand::Request>();
-    
-    waypoint_yaml->yaml_as_string = YAML::Dump(mission_yaml);
-    waypoint_command->command = 0;
+    geometry_msgs::msg::PoseArray goal_array;
+    goal_array.header.stamp = this->now();
+    goal_array.header.frame_id = id_ + "/map";
+    goal_array.poses = goal_poses_;
+    goal_pub_->publish(goal_array);
 
-    if (!waypoint_yaml_request_->wait_for_service(std::chrono::seconds(1))) {
-      RCLCPP_ERROR(this->get_logger(), "Waypoint client not reachable via service.");
-      return;
-    }
-    auto waypoint_yaml_result = waypoint_yaml_request_->async_send_request(waypoint_yaml);
-
-    if (!waypoint_command_request_->wait_for_service(std::chrono::seconds(1))) {
-      RCLCPP_ERROR(this->get_logger(), "Waypoint client not reachable via service.");
-      return;
+    if (publish_mission_yaml_ && yaml_pub_) {
+      std_msgs::msg::String yaml_msg;
+      yaml_msg.data = YAML::Dump(mission_yaml);
+      yaml_pub_->publish(yaml_msg);
     }
 
-    RCLCPP_INFO(this->get_logger(), "Sending goals to Maestro...");
+    std_msgs::msg::UInt8 command_msg;
+    command_msg.data = static_cast<uint8_t>(start_command_value_);
+    command_pub_->publish(command_msg);
 
-    auto waypoint_command_result = waypoint_command_request_->async_send_request(waypoint_command);
+    RCLCPP_INFO(
+      this->get_logger(),
+      "Published %zu starting goals for robot %s using generic mission topics.",
+      goal_poses_.size(), id_.c_str());
     
     goals_sent_ = true;
   }
 
   void timerCallback()
   {
-    // If goals are already sent, stop checking
     if (goals_sent_) {
       timer_->cancel();
       return;
     }
 
-    // Update TF availability
     check_transform_available();
-    
-    // Check if all required conditions are met
+
     bool robot_ready = odom_received_ && tf_available_;
-    
-    if (robot_ready && 
-        waypoint_yaml_request_->service_is_ready() &&
-        waypoint_command_request_->service_is_ready()) 
+
+    if (robot_ready)
     {
       RCLCPP_INFO(this->get_logger(), "Robot %s is ready, sending goals...", id_.c_str());
       sendGoals();
     }
-    // Check for timeout
     else if (this->now() > init_timeout_) {
       RCLCPP_ERROR(this->get_logger(), 
         "Robot %s initialization timeout. Status:", id_.c_str());
@@ -240,24 +260,21 @@ private:
     }
   }
 
-  // Service clients
-  rclcpp::Client<arl_mission_maestro::srv::MaestroMissionYaml>::SharedPtr waypoint_yaml_request_;
-  rclcpp::Client<arl_mission_maestro::srv::MaestroCommand>::SharedPtr waypoint_command_request_;
-
-  // TF buffer and listener
   std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
   std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
 
-  // Odometry subscriber
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
+  rclcpp::Publisher<geometry_msgs::msg::PoseArray>::SharedPtr goal_pub_;
+  rclcpp::Publisher<std_msgs::msg::String>::SharedPtr yaml_pub_;
+  rclcpp::Publisher<std_msgs::msg::UInt8>::SharedPtr command_pub_;
 
-  // Timer for periodic checking
   rclcpp::TimerBase::SharedPtr timer_;
-  
-  // Member variables
+
   std::string yaml_file_path_;
   std::string id_;
   double waypoint_radius_;
+  int start_command_value_{0};
+  bool publish_mission_yaml_{true};
   bool goals_sent_{false};
   bool odom_received_{false};
   bool tf_available_{false};

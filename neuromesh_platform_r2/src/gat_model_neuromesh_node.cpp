@@ -26,7 +26,7 @@ GATneuromeshNode :: GATneuromeshNode(const rclcpp::NodeOptions &options): Node("
 	this->declare_parameter<bool>("ints_to_floats", true);
     this->declare_parameter<std::string>("goal_poses_yaml_file", "goal_poses.yaml");
     this->declare_parameter<double>("goals_sending_delay", 10.0);
-    this->declare_parameter<std::string>("service_adapter_type", "MissionMaestro");
+    this->declare_parameter<std::string>("service_adapter_type", "topic");
 
 	// Get node parameters
 	this->get_parameter("encoder_model_name", encoder_model_name_);
@@ -60,9 +60,6 @@ GATneuromeshNode :: GATneuromeshNode(const rclcpp::NodeOptions &options): Node("
     second_decoder_result_publisher_ = this->create_publisher<geometry_msgs::msg::PoseStamped>(
     "second_decoder_result_topic", 10  // topic name and queue size
     );
-
-    // this->waypoint_yaml_request = create_client<arl_mission_maestro::srv::MaestroMissionYaml>("maestro_yaml");
-    // this->waypoint_command_request = create_client<arl_mission_maestro::srv::MaestroCommand>("maestro_command");
 
 	//PLACEHOLDER: update available_agents
 	
@@ -584,11 +581,12 @@ void GATneuromeshNode::prepare_second_stage_decoding() {
                     size_t size = second_decoder_result_tensor->data.size();
                     std::memcpy(&max_prob, &second_decoder_result_tensor->data[0], sizeof(float));
 
-                    // get registry to list all service adapters
-                    
-                    goal_adapter_ = AdapterFactory::create(service_adapter_type_, this->shared_from_this());
+                    if (!goal_adapter_) {
+                        goal_adapter_ = AdapterFactory::create(service_adapter_type_, this->shared_from_this());
+                    }
                     if (!goal_adapter_) {
                         RCLCPP_ERROR(this->get_logger(), "Failed to create service adapter of type '%s'", service_adapter_type_.c_str());
+                        return;
                     }
 
                     NavigationGoal goal;
