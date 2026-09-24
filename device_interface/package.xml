@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>neuromesh_device_interface</name>
+  <version>0.1.0</version>
+  <description>ROS-independent native tensor contracts and buffer leases.</description>
+  <maintainer email="long.p.quang.civ@army.mil">Long Quang</maintainer>
+  <license>TODO: License declaration</license>
+  <buildtool_depend>cmake</buildtool_depend>
+  <export><build_type>cmake</build_type></export>
+</package>

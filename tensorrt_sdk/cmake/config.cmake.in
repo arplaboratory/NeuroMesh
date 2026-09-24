@@ -1,0 +1,4 @@
+@PACKAGE_INIT@
+include("${CMAKE_CURRENT_LIST_DIR}/resolve_tensorrt.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/NeuroMeshTensorRTSDKTargets.cmake")
+check_required_components(neuromesh_tensorrt_sdk)

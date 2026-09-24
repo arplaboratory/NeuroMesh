@@ -1,14 +1,19 @@
 #include "tensorrt_engine/trt_engine_modified.h"
-#include <cassert>
 #include <fstream>
 #include <iostream>
 #include <memory>
 #include <numeric>
 
 #include <NvInfer.h>
+#include <NvInferVersion.h>
 #include <NvOnnxParser.h>
 #include "NvInferPlugin.h"
 #include <cuda_runtime.h>
+
+#if NV_TENSORRT_MAJOR != 10 || NV_TENSORRT_MINOR != 8 || \
+    NV_TENSORRT_PATCH != 0 || NV_TENSORRT_BUILD != 43
+#error "NeuroMesh deployment requires TensorRT SDK 10.8.0.43"
+#endif
 
 namespace engine_interface
 {
@@ -51,7 +56,8 @@ nvinfer1::ICudaEngine *createEngine(const std::string &inputFileName,
                   ".trt";
   }
 
-  initLibNvInferPlugins(nullptr, "");
+  if (!initLibNvInferPlugins(&logger, ""))
+    throw std::runtime_error("TensorRT plugin initialization failed");
 
   // test if conversion already happened and .trt version exists
   std::ifstream f(engine_path.c_str());
@@ -78,10 +84,12 @@ nvinfer1::ICudaEngine *createEngine(const std::string &inputFileName,
 
     std::unique_ptr<nvinfer1::IBuilder> builder{
         nvinfer1::createInferBuilder(logger)};
+    if (!builder)
+      throw std::runtime_error("TensorRT builder creation failed");
     std::unique_ptr<nvinfer1::INetworkDefinition> network{
-        builder->createNetworkV2(
-            1U << (unsigned)
-                nvinfer1::NetworkDefinitionCreationFlag::kEXPLICIT_BATCH)};
+        builder->createNetworkV2(0U)};
+    if (!network)
+      throw std::runtime_error("TensorRT network creation failed");
 
     std::unique_ptr<nvonnxparser::IParser> parser{
         nvonnxparser::createParser(*network, logger)};
@@ -94,18 +102,19 @@ nvinfer1::ICudaEngine *createEngine(const std::string &inputFileName,
 
     std::unique_ptr<nvinfer1::IBuilderConfig> config(
         builder->createBuilderConfig());
+    if (!config)
+      throw std::runtime_error("TensorRT builder config creation failed");
 
     std::unique_ptr<nvinfer1::IHostMemory> serializedEngine(
         builder->buildSerializedNetwork(*network, *config));
+    if (!serializedEngine)
+      throw std::runtime_error("TensorRT engine serialization failed");
 
     // save to .trt
     std::ofstream out(engine_path, std::ios::binary);
-    out.write((char *)serializedEngine->data(), serializedEngine->size());
-
-    // deserialize from serialized engine
-    std::unique_ptr<nvinfer1::IRuntime> runtime(
-        nvinfer1::createInferRuntime(logger));
-    assert(runtime != nullptr);
+    if (!out.write(static_cast<const char*>(serializedEngine->data()),
+                   static_cast<std::streamsize>(serializedEngine->size())))
+      throw std::runtime_error("Cannot write TensorRT engine " + engine_path);
 
     return runtime->deserializeCudaEngine(serializedEngine->data(),
                                           serializedEngine->size());

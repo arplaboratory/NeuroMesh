@@ -1,0 +1,57 @@
+include(CMakeFindDependencyMacro)
+find_dependency(CUDAToolkit 12.8 EXACT)
+
+find_path(NEUROMESH_TENSORRT_INCLUDE_DIR NAMES NvInfer.h NvInferVersion.h
+  HINTS ${TensorRT_ROOT} ENV TensorRT_ROOT
+  PATH_SUFFIXES include include/x86_64-linux-gnu)
+find_library(NEUROMESH_TENSORRT_NVINFER_LIBRARY NAMES nvinfer
+  HINTS ${TensorRT_ROOT} ENV TensorRT_ROOT
+  PATH_SUFFIXES lib lib64 lib/x86_64-linux-gnu)
+find_library(NEUROMESH_TENSORRT_ONNXPARSER_LIBRARY NAMES nvonnxparser
+  HINTS ${TensorRT_ROOT} ENV TensorRT_ROOT
+  PATH_SUFFIXES lib lib64 lib/x86_64-linux-gnu)
+find_library(NEUROMESH_TENSORRT_PLUGIN_LIBRARY NAMES nvinfer_plugin
+  HINTS ${TensorRT_ROOT} ENV TensorRT_ROOT
+  PATH_SUFFIXES lib lib64 lib/x86_64-linux-gnu)
+
+if(NEUROMESH_TENSORRT_INCLUDE_DIR)
+  file(STRINGS "${NEUROMESH_TENSORRT_INCLUDE_DIR}/NvInferVersion.h" _version_lines
+    REGEX "^#define NV_TENSORRT_(MAJOR|MINOR|PATCH|BUILD) ")
+  foreach(_component MAJOR MINOR PATCH BUILD)
+    string(REGEX MATCH "NV_TENSORRT_${_component} +([0-9]+)" _match "${_version_lines}")
+    set(NEUROMESH_TENSORRT_VERSION_${_component} "${CMAKE_MATCH_1}")
+  endforeach()
+  set(NEUROMESH_TENSORRT_VERSION
+    "${NEUROMESH_TENSORRT_VERSION_MAJOR}.${NEUROMESH_TENSORRT_VERSION_MINOR}.${NEUROMESH_TENSORRT_VERSION_PATCH}.${NEUROMESH_TENSORRT_VERSION_BUILD}")
+endif()
+
+include(FindPackageHandleStandardArgs)
+find_package_handle_standard_args(neuromesh_tensorrt_sdk
+  REQUIRED_VARS NEUROMESH_TENSORRT_INCLUDE_DIR
+    NEUROMESH_TENSORRT_NVINFER_LIBRARY NEUROMESH_TENSORRT_ONNXPARSER_LIBRARY
+    NEUROMESH_TENSORRT_PLUGIN_LIBRARY
+  VERSION_VAR NEUROMESH_TENSORRT_VERSION)
+if(NOT NEUROMESH_TENSORRT_VERSION STREQUAL "10.8.0.43")
+  message(FATAL_ERROR "NeuroMesh requires TensorRT 10.8.0.43; found ${NEUROMESH_TENSORRT_VERSION}")
+endif()
+
+if(NOT TARGET TensorRT::nvinfer)
+  add_library(TensorRT::nvinfer UNKNOWN IMPORTED)
+  set_target_properties(TensorRT::nvinfer PROPERTIES
+    IMPORTED_LOCATION "${NEUROMESH_TENSORRT_NVINFER_LIBRARY}"
+    INTERFACE_INCLUDE_DIRECTORIES "${NEUROMESH_TENSORRT_INCLUDE_DIR}")
+endif()
+if(NOT TARGET TensorRT::nvonnxparser)
+  add_library(TensorRT::nvonnxparser UNKNOWN IMPORTED)
+  set_target_properties(TensorRT::nvonnxparser PROPERTIES
+    IMPORTED_LOCATION "${NEUROMESH_TENSORRT_ONNXPARSER_LIBRARY}"
+    INTERFACE_INCLUDE_DIRECTORIES "${NEUROMESH_TENSORRT_INCLUDE_DIR}"
+    INTERFACE_LINK_LIBRARIES TensorRT::nvinfer)
+endif()
+if(NOT TARGET TensorRT::plugin)
+  add_library(TensorRT::plugin UNKNOWN IMPORTED)
+  set_target_properties(TensorRT::plugin PROPERTIES
+    IMPORTED_LOCATION "${NEUROMESH_TENSORRT_PLUGIN_LIBRARY}"
+    INTERFACE_INCLUDE_DIRECTORIES "${NEUROMESH_TENSORRT_INCLUDE_DIR}"
+    INTERFACE_LINK_LIBRARIES TensorRT::nvinfer)
+endif()

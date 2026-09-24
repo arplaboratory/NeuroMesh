@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>neuromesh_tensorrt_sdk</name>
+  <version>0.1.0</version>
+  <description>Exact TensorRT and CUDA SDK targets shared by NeuroMesh backends.</description>
+  <maintainer email="77548552+devonsuper@users.noreply.github.com">arpl</maintainer>
+  <license>MIT</license>
+  <buildtool_depend>cmake</buildtool_depend>
+  <build_depend>tensorrt</build_depend>
+  <export><build_type>cmake</build_type></export>
+</package>

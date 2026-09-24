@@ -11,6 +11,7 @@
 
   <depend>neuromesh_interfaces</depend>
   <depend>engine_interface</depend>
+  <depend>neuromesh_tensorrt_sdk</depend>
   <depend>pluginlib</depend>
 
   <build_depend>rclcpp_components</build_depend>

@@ -58,7 +58,8 @@ endif()
 )
 
 install(DIRECTORY launch
-  DESTINATION share/${PROJECT_NAME})
+  DESTINATION share/${PROJECT_NAME}
+  OPTIONAL)
 
 install(DIRECTORY models
   DESTINATION share/${PROJECT_NAME}

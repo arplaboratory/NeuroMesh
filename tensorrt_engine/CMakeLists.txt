@@ -1,11 +1,9 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.18)
 project(tensorrt_engine)
-set(CMAKE_BUILD_TYPE Release)
 
-# Default to C++14
-if(NOT CMAKE_CXX_STANDARD)
-  set(CMAKE_CXX_STANDARD 14)
-endif()
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
@@ -25,7 +23,7 @@ set (dependencies
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(OpenCV REQUIRED)
-find_package(CUDA REQUIRED)
+find_package(neuromesh_tensorrt_sdk CONFIG REQUIRED)
 foreach(dep ${dependencies})
   find_package(${dep} REQUIRED)
 endforeach()
@@ -38,10 +36,12 @@ add_library(tensorrt_engine SHARED
 target_include_directories(tensorrt_engine PUBLIC 
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
-  ${OpenCV_INCLUDE_DIRS} ${CUDA_INCLUDE_DIRS})
+  ${OpenCV_INCLUDE_DIRS})
 
 
-target_link_libraries(tensorrt_engine ${OpenCV_LIBS} ${CUDA_LIBRARIES} nvinfer nvonnxparser nvinfer_plugin cudnn)
+target_link_libraries(tensorrt_engine
+  ${OpenCV_LIBS}
+  NeuroMesh::tensorrt_sdk)
 # set_target_properties(tensorrt_engine PROPERTIES
 #   COMPILE_DEFINITIONS "COMPOSITION_BUILDING_DLL"
 # )
