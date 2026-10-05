@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>neuromesh_onnx_stage</name><version>0.1.0</version>
+  <description>Native distributed ONNX inference runtime.</description>
+  <maintainer email="longpquang@gmail.com">Long Quang</maintainer>
+  <license>TODO: License declaration</license>
+  <buildtool_depend>cmake</buildtool_depend>
+  <depend>neuromesh_device_interface</depend>
+  <export><build_type>cmake</build_type></export>
+</package>

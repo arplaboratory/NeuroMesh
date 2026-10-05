@@ -1,30 +1,29 @@
 #include <gmock/gmock.h>
 #include "onnx_engine/onnx_engine.h"
+#include <fstream>
+#include <unistd.h>
 
-TEST(ONNXEngineTest, LoadModelSuccess) {
+// Real ONNX IR8/opset18 Identity model: float32 [1,3] x -> y.
+// Inline protobuf keeps this CPU compatibility test independent of Python ONNX.
+static const unsigned char kIdentityModel[] = {8, 8, 18, 14, 110, 101, 117, 114, 111, 109, 101, 115, 104, 95, 116, 101, 115, 116, 58, 70, 10, 16, 10, 1, 120, 18, 1, 121, 34, 8, 73, 100, 101, 110, 116, 105, 116, 121, 18, 8, 105, 100, 101, 110, 116, 105, 116, 121, 90, 19, 10, 1, 120, 18, 14, 10, 12, 8, 1, 18, 8, 10, 2, 8, 1, 10, 2, 8, 3, 98, 19, 10, 1, 121, 18, 14, 10, 12, 8, 1, 18, 8, 10, 2, 8, 1, 10, 2, 8, 3, 66, 2, 16, 18};
+
+TEST(ONNXEngineTest, PinnedRuntimeLoadsAndExecutesModel) {
+    char path[] = "/tmp/neuromesh_onnx_XXXXXX";
+    const int fd = mkstemp(path);
+    ASSERT_GE(fd, 0);
+    close(fd);
+    {
+        std::ofstream file(path, std::ios::binary);
+        file.write(reinterpret_cast<const char*>(kIdentityModel), sizeof(kIdentityModel));
+    }
     engine_interface::ONNXEngine engine;
-    EXPECT_NO_THROW({
-    });
-
-    EXPECT_NO_THROW({
-        bool loaded = engine.loadModel("test_model.onnx", {{1, 3, 224, 224}}, 4);
-        EXPECT_TRUE(loaded);
-    });
-}
-
-TEST(ONNXEngineTest, InferenceProducesOutput) {
-    engine_interface::ONNXEngine engine;
-    engine.loadModel("test_model.onnx", {{1, 3, 224, 224}}, 4);
-
-    std::vector<const void*> input_tensors(1, nullptr);
-    std::vector<int> input_sizes(1, 1024);
-    std::vector<void*> output_tensors(1, nullptr);
-    std::vector<int> output_sizes(1, 1024);
-
-    engine.runInference(input_tensors, input_sizes, output_tensors, output_sizes);
-    EXPECT_EQ(output_tensors.size(), 1);
-    EXPECT_NE(output_tensors[0], nullptr);
-    // Clean up allocated memory
-    delete[] static_cast<int*>(output_tensors[0]);
-    output_tensors[0] = nullptr;
+    const bool loaded = engine.loadModel(path, {{1, 3}}, sizeof(float));
+    unlink(path);
+    ASSERT_TRUE(loaded);
+    float input[] = {1.25f, -2.5f, 3.75f};
+    float output[] = {0, 0, 0};
+    std::vector<const void*> inputs{input};
+    std::vector<void*> outputs{output};
+    engine.runInference(inputs, {sizeof(input)}, outputs, {sizeof(output)});
+    for (int i = 0; i < 3; ++i) EXPECT_FLOAT_EQ(input[i], output[i]);
 }

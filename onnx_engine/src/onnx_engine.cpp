@@ -1,5 +1,5 @@
 #include "onnx_engine/onnx_engine.h"
-#include <core/session/onnxruntime_cxx_api.h>
+#include <onnxruntime_cxx_api.h>
 #include <iostream>
 
 namespace engine_interface
@@ -80,12 +80,11 @@ bool ONNXEngine::loadModel(const std::string& model_path,
     // std::cout << "Number of outputs: " << num_outputs << std::endl;
 
     for (size_t i = 0; i < num_inputs; ++i) {
-        char* name = impl_->session_->GetInputName(i, allocator);
+        auto name = impl_->session_->GetInputNameAllocated(i, allocator);
         if (name == nullptr) {
             throw std::runtime_error("Failed to get input name for index " + std::to_string(i));
         }
-        impl_->input_names_.emplace_back(name);
-        allocator.Free(name);
+        impl_->input_names_.emplace_back(name.get());
 
         type_info = new Ort::TypeInfo(impl_->session_->GetInputTypeInfo(i));
         auto tensor_info = type_info->GetTensorTypeAndShapeInfo();
@@ -103,12 +102,11 @@ bool ONNXEngine::loadModel(const std::string& model_path,
     }
 
     for (size_t i = 0; i < num_outputs; ++i) {
-        char* name = impl_->session_->GetOutputName(i, allocator);
+        auto name = impl_->session_->GetOutputNameAllocated(i, allocator);
         if (name == nullptr) {
             throw std::runtime_error("Failed to get output name for index " + std::to_string(i));
         }
-        impl_->output_names_.emplace_back(name);
-        allocator.Free(name);
+        impl_->output_names_.emplace_back(name.get());
 
         type_info = new Ort::TypeInfo(impl_->session_->GetOutputTypeInfo(i));
         auto tensor_info = type_info->GetTensorTypeAndShapeInfo();
